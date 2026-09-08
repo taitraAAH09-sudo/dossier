@@ -69,6 +69,13 @@ button{cursor:pointer;border:0;background:none}
 .tab:hover{background:#fff;transform:translateX(3px)}
 .tab.on{background:#fff;color:var(--ink);transform:translateX(6px);box-shadow:2px 1px 6px rgba(20,30,40,.09)}
 .rail-none{padding:0 10px;font-size:12px;color:var(--ink-3)}
+.folder-tab{display:flex;align-items:center;gap:6px;background:#F2F0EA;font-weight:650;cursor:pointer}
+.folder-tab .ic{flex:0 0 auto;font-size:13px}
+.folder-tab .lb{flex:1;font-weight:650}
+.folder-tab .car{flex:0 0 auto;font-size:11px;color:var(--ink-3)}
+.folder-tab:hover{background:#EAE7DF}
+.fold-body{padding-left:12px}
+.tab.sub{width:calc(100% - 20px)}
 
 /* ---------- main ---------- */
 .main{margin-left:var(--rail);padding:20px 24px 140px;max-width:1120px}
@@ -225,7 +232,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V21</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V22</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -280,7 +287,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V21
+   活動專卷 V22
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -471,6 +478,7 @@ const Store={
            sections:[{id,title,files:[{id,name,label,num,kind,size,pages,jump}]}] }
 --------------------------------------------------------------- */
 let doc=null, activeSec=null;
+let openRailGroups=new Set();
 const blankDoc=()=>({title:"活動專卷",subtitle:"",sections:[],updated:Date.now()});
 const secById=id=>doc.sections.find(s=>s.id===id);
 const secColor=s=>COLORS[doc.sections.indexOf(s)%COLORS.length];
@@ -527,21 +535,53 @@ function renderRail(){
   const s=secById(activeSec);
   if(!s){ activeSec=null; return renderRail(); }
   const c=secColor(s);
+  let body="";
+  if(s.files.length){
+    let lastGroup=null, occ=0, insideFold=false;
+    s.files.forEach(f=>{
+      const g=f.group||"";
+      if(g!==lastGroup){
+        lastGroup=g;
+        if(insideFold){ body+="</div>"; insideFold=false; }
+        if(g){
+          occ++;
+          const key=s.id+"::"+occ+"::"+g;
+          const open=openRailGroups.has(key);
+          body+='<button class="tab folder-tab" data-fold="'+key+'" style="--c:'+c+'" aria-expanded="'+open+'">'+
+                '<span class="ic">📁</span><span class="lb">'+esc(g)+'</span>'+
+                '<span class="car">'+(open?"▾":"▸")+'</span></button>'+
+                '<div class="fold-body" data-foldbody="'+key+'"'+(open?"":' style="display:none"')+'>';
+          insideFold=true;
+        }
+      }
+      body+='<button class="tab'+(g?" sub":"")+'" data-file="'+f.id+'" style="--c:'+c+'">'+
+        (f.num?'<span class="num">'+esc(f.num)+"</span>":"")+
+        '<span class="lb">'+esc(f.label||f.name)+"</span>"+
+        (f.kind==="pdf"&&f.jump>1?'<span class="pg">第 '+f.jump+" 頁</span>":"")+
+        "</button>";
+    });
+    if(insideFold) body+="</div>";
+  } else {
+    body='<div class="rail-none">這一章還沒有檔案</div>';
+  }
   r.innerHTML='<button class="back" id="railBack">← 全部章節</button>'+
-    '<div class="here">'+esc(s.title)+"</div>"+
-    (s.files.length? s.files.map(f=>
-      '<button class="tab" data-file="'+f.id+'" style="--c:'+c+'">'+
-      (f.num?'<span class="num">'+esc(f.num)+"</span>":"")+
-      '<span class="lb">'+esc(f.label||f.name)+"</span>"+
-      (f.kind==="pdf"&&f.jump>1?'<span class="pg">第 '+f.jump+" 頁</span>":"")+
-      "</button>").join("")
-      : '<div class="rail-none">這一章還沒有檔案</div>');
+    '<div class="here">'+esc(s.title)+"</div>"+body;
 }
 
 $("#rail").addEventListener("click",e=>{
   if(e.target.closest("#railBack")){ activeSec=null; renderRail(); renderView(); window.scrollTo({top:0,behavior:"smooth"}); return; }
   const sb=e.target.closest("[data-sec]");
   if(sb){ openSection(sb.dataset.sec); return; }
+  const fold=e.target.closest("[data-fold]");
+  if(fold){
+    const key=fold.dataset.fold, open=openRailGroups.has(key);
+    if(open) openRailGroups.delete(key); else openRailGroups.add(key);
+    const bd=$("#rail").querySelector('[data-foldbody="'+key+'"]');
+    if(bd) bd.style.display=open?"none":"";
+    fold.setAttribute("aria-expanded",String(!open));
+    const car=fold.querySelector(".car"); if(car) car.textContent=open?"▸":"▾";
+    return;
+  }
   const fbn=e.target.closest("[data-file]");
   if(fbn){
     const f=fileById(fbn.dataset.file);
@@ -573,6 +613,15 @@ function updateActiveTab(){
   }
   const fid=current.id.replace("cap-","");
   document.querySelectorAll(".tab[data-file]").forEach(t=>t.classList.toggle("on",t.dataset.file===fid));
+  const activeTab=document.querySelector('.tab[data-file="'+fid+'"]');
+  const fbody=activeTab&&activeTab.closest(".fold-body");
+  if(fbody&&fbody.style.display==="none"){
+    fbody.style.display="";
+    const key=fbody.dataset.foldbody;
+    openRailGroups.add(key);
+    const hd=document.querySelector('[data-fold="'+key+'"]');
+    if(hd){ hd.setAttribute("aria-expanded","true"); const car=hd.querySelector(".car"); if(car) car.textContent="▾"; }
+  }
 }
 
 /* ---------- 前台內容 ---------- */
@@ -1008,7 +1057,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V21");
+  dg("版本","","V22");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
