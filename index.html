@@ -232,7 +232,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V22</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V23</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -287,7 +287,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V22
+   活動專卷 V23
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -509,8 +509,8 @@ async function renderPage(el){
   try{
     const pdf=await getPdf(f), page=await pdf.getPage(num);
     const base=page.getViewport({scale:1});
-    const dpr=Math.min((window.devicePixelRatio||1)*1.5,3.5);
-    const vp=page.getViewport({scale:Math.min(((el.clientWidth||800)*dpr)/base.width,5)});
+    const dpr=Math.min((window.devicePixelRatio||1)*1.5,4);
+    const vp=page.getViewport({scale:Math.min(((el.clientWidth||800)*dpr)/base.width,6)});
     const cv=document.createElement("canvas");
     cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
     await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
@@ -715,14 +715,34 @@ async function renderView(){
 }
 
 /* 放大 / 附件下載 */
-document.addEventListener("click",e=>{
+document.addEventListener("click",async e=>{
   const z=e.target.closest(".zoom");
   if(z){
-    const p=z.closest(".page"),cv=p.querySelector("canvas"),im=p.querySelector("img");
+    const p=z.closest(".page"),name=(p.closest(".pages")?.previousElementSibling?.textContent||"").trim();
+    const fid=p.dataset.file,num=+p.dataset.page;
+    if(fid&&num){
+      // PDF 頁面：放大時重新用高解析度畫一次，而不是直接拉伸小張的縮圖
+      $("#lbName").textContent=name; $("#lbImg").src=""; $("#lb").classList.add("on");
+      try{
+        const f=fileById(fid), pdf=await getPdf(f), page=await pdf.getPage(num);
+        const base=page.getViewport({scale:1});
+        const target=Math.max(window.innerWidth,window.innerHeight)*Math.min(window.devicePixelRatio||1,3);
+        const vp=page.getViewport({scale:Math.min(target/base.width,7)});
+        const cv=document.createElement("canvas");
+        cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+        await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+        $("#lbImg").src=cv.toDataURL("image/jpeg",.95);
+      }catch(err){
+        const cv=p.querySelector("canvas");
+        if(cv) $("#lbImg").src=cv.toDataURL("image/jpeg",.92);
+        else toast("這一頁還在載入，等一下再試");
+      }
+      return;
+    }
+    const cv=p.querySelector("canvas"),im=p.querySelector("img");
     const src=cv?cv.toDataURL("image/jpeg",.92):im?im.src:null;
     if(!src) return toast("這一頁還在載入，等一下再試");
-    $("#lbImg").src=src;
-    $("#lbName").textContent=(p.closest(".pages")?.previousElementSibling?.textContent||"").trim();
+    $("#lbImg").src=src; $("#lbName").textContent=name;
     $("#lb").classList.add("on"); return;
   }
   const dl=e.target.closest("[data-dl]");
@@ -1057,7 +1077,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V22");
+  dg("版本","","V23");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
