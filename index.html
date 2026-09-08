@@ -165,6 +165,12 @@ button{cursor:pointer;border:0;background:none}
 .lb-bar button{color:#DDE3E8;border:1px solid #384450;border-radius:7px;padding:5px 11px;font-size:13px}
 .lb-body{flex:1;overflow:auto;display:grid;place-items:center;padding:10px;touch-action:pinch-zoom}
 .lb-body img{max-width:100%;max-height:100%;object-fit:contain}
+.dg{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #EFEDE6}
+.dg:last-child{border-bottom:0}
+.dg .k{flex:0 0 92px;color:var(--ink-3);font-size:12.5px}
+.dg .v{flex:1;min-width:0;word-break:break-all}
+.dg .v.bad{color:var(--danger);font-weight:600}
+.dg .v.ok{color:#3D6B4E}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--safe-b));
   background:var(--ink);color:#fff;font-size:13.5px;padding:10px 18px;border-radius:999px;z-index:200;
   opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
@@ -203,7 +209,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V8</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V10</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -214,6 +220,7 @@ button{cursor:pointer;border:0;background:none}
     <span class="dot" aria-hidden="true"></span>
     <span id="stampTx">內容更新時間</span>
     <span class="hint">重新整理就是最新版</span>
+    <button class="btn re" id="btnDiag">連線狀態</button>
     <button class="btn re" id="btnReload">重新整理</button>
   </div>
 </header>
@@ -235,6 +242,18 @@ button{cursor:pointer;border:0;background:none}
   </div>
 </div>
 
+<div class="mask" id="diagMask">
+  <div class="modal" style="max-width:460px">
+    <h3>連線狀態</h3>
+    <p>這頁是給我們兩個看的，出問題直接截圖給我就好。</p>
+    <div id="diagBody" style="font-size:13px;line-height:1.75"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="diagCopy">複製全部</button>
+      <button class="btn primary" id="diagClose">關閉</button>
+    </div>
+  </div>
+</div>
+
 <div class="lightbox" id="lb">
   <div class="lb-bar"><b id="lbName"></b><button id="lbClose">關閉</button></div>
   <div class="lb-body"><img id="lbImg" alt=""></div>
@@ -246,7 +265,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V8
+   活動專卷 V10
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -254,12 +273,17 @@ button{cursor:pointer;border:0;background:none}
 
 /* === 要填的只有這兩塊 ===================================== */
 const FIREBASE_CONFIG = {
-  apiKey:      "",                 // ← 只差這個。專案設定 → 一般 → 您的應用程式，複製 AIza... 那串
-  authDomain:  "stagetool-f9ffb.firebaseapp.com",
-  databaseURL: "https://stagetool-f9ffb-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId:   "stagetool-f9ffb"
+  apiKey:            "AIzaSyAUZJpSuQjUSCEKxAneePkEpWXHmwoJvHc",
+  authDomain:        "stagetool-f9ffb.firebaseapp.com",
+  databaseURL:       "https://stagetool-f9ffb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "stagetool-f9ffb",
+  storageBucket:     "stagetool-f9ffb.firebasestorage.app",
+  messagingSenderId: "344934002221",
+  appId:             "1:344934002221:web:858df075753dd3cf7c92a4"
 };
-const ADMIN_EMAIL = "";            // ← 還有這個。你在 Authentication 建的後台帳號 email
+// 留空 = 任何用帳密登入的人都能進後台畫面，真正能不能寫入由資料庫規則決定。
+// 想在前端也擋一層，就把你的 email 填進去。
+const ADMIN_EMAIL = "";
 /* ========================================================= */
 
 const DB_ROOT="dossier", CHUNK=262144;
@@ -283,6 +307,14 @@ const isAdminUrl=()=>adminRevealed
 const viewUrl =()=>location.origin+location.pathname;
 const adminUrl=()=>viewUrl()+"?"+ADMIN_KEY;
 
+const diag=[];
+function dg(k,state,msg){ diag.push({k,state,msg:String(msg)}); }
+function paintDiag(){
+  $("#diagBody").innerHTML=diag.map(d=>
+    '<div class="dg"><span class="k">'+esc(d.k)+'</span><span class="v '+
+    (d.state===true?"ok":d.state===false?"bad":"")+'">'+
+    (d.state===true?"✓ ":d.state===false?"✗ ":"")+esc(d.msg)+"</span></div>").join("");
+}
 let toastT;
 function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");
   clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),2600)}
@@ -339,7 +371,9 @@ let fb=null;
 async function initCloud(){
   if(!CLOUD) return;
   const load=src=>new Promise((res,rej)=>{const s=document.createElement("script");
-    s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)});
+    s.src=src;s.onload=res;
+    s.onerror=()=>rej(new Error("載不到 "+src.split("/").pop()+"（網路被擋，或公司防火牆擋掉 gstatic.com）"));
+    document.head.appendChild(s)});
   const base="https://www.gstatic.com/firebasejs/10.12.2/";
   await load(base+"firebase-app-compat.js");
   await load(base+"firebase-auth-compat.js");
@@ -348,7 +382,11 @@ async function initCloud(){
   fb={auth:firebase.auth(),db:firebase.database()};
   if(!fb.auth.currentUser) await fb.auth.signInAnonymously();
 }
-const isAdminUser=()=>!!(fb&&fb.auth.currentUser&&fb.auth.currentUser.email===ADMIN_EMAIL);
+const isAdminUser=()=>{
+  const u=fb&&fb.auth.currentUser;
+  if(!u||u.isAnonymous||!u.email) return false;
+  return ADMIN_EMAIL ? u.email===ADMIN_EMAIL : true;
+};
 function blobToB64(blob){
   return new Promise((res,rej)=>{const r=new FileReader();
     r.onload=()=>res(String(r.result).split(",")[1]||"");
@@ -634,6 +672,12 @@ async function mergePdf(section){
 }
 $("#btnMerge").onclick=()=>mergePdf(null);
 $("#btnReload").onclick=()=>location.reload();
+$("#btnDiag").onclick=()=>{paintDiag();$("#diagMask").classList.add("on")};
+$("#diagClose").onclick=()=>$("#diagMask").classList.remove("on");
+$("#diagCopy").onclick=async()=>{
+  const t=diag.map(d=>d.k+"："+(d.state===true?"OK ":d.state===false?"NG ":"")+d.msg).join("\n");
+  try{await navigator.clipboard.writeText(t);toast("已複製")}catch(e){prompt("手動複製：",t)}
+};
 addEventListener("resize",measureTop);
 
 /* ---------- 後台 ---------- */
@@ -683,6 +727,7 @@ function renderAdmin(){
       <div class="list" id="secList"></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="addSec">新增章節</button>
+        <button class="btn" id="signOut">登出管理者</button>
         <button class="btn danger" id="wipe">清空整份專卷</button>
       </div>
     </div>`;
@@ -697,6 +742,10 @@ function renderAdmin(){
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[]});
     save();renderAdmin()};
+  const so=$("#signOut");
+  if(so){ so.style.display=CLOUD?"":"none";
+    so.onclick=async()=>{ await fb.auth.signOut(); await fb.auth.signInAnonymously();
+      toast("已登出，回到前台"); setMode(false); }; }
   $("#wipe").onclick=async()=>{
     if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
     if(!confirm("再確認一次：這個動作沒辦法復原。")) return;
@@ -832,7 +881,7 @@ function setMode(a){
 $("#mView").onclick=()=>setMode(false);
 $("#mAdmin").onclick=()=>{
   if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
-  if(CLOUD){$("#mailRow").style.display="";$("#mailInput").value=ADMIN_EMAIL;
+  if(CLOUD){$("#mailRow").style.display="";$("#mailInput").value=ADMIN_EMAIL||localStorage.getItem("dossierMail")||"";
     $("#pwHint").textContent="用管理者帳號登入才能上傳與修改。長官看的前台不需要登入。"}
   $("#pwMask").classList.add("on");setTimeout(()=>$("#pwInput").focus(),50);
 };
@@ -848,8 +897,9 @@ $("#pwOk").onclick=async()=>{
   try{
     await fb.auth.signInWithEmailAndPassword($("#mailInput").value.trim(),$("#pwInput").value);
     if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
-      throw new Error("這個帳號沒有管理權限")}
+      throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
+    localStorage.setItem("dossierMail",$("#mailInput").value.trim());
     setMode(true);toast("已登入管理者");
   }catch(err){
     toast("登入失敗："+(err.code==="auth/invalid-credential"?"帳號或密碼不對":err.message));
@@ -870,17 +920,53 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
+  dg("版本","","V10");
+  dg("網址","",location.href.slice(0,90));
+  dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
+      ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
+      : location.protocol.replace(":",""));
+  if(!CLOUD){
+    dg("執行模式",false,"本機模式 — FIREBASE_CONFIG.apiKey 還是空的，資料只存在這台裝置的瀏覽器，不會同步。");
+  }else{
+    dg("執行模式",true,"雲端模式 → "+FIREBASE_CONFIG.projectId);
+  }
   try{
-    await initCloud();
-    doc=await Store.loadDoc();
+    if(CLOUD){
+      try{
+        await initCloud();
+        dg("Firebase 載入",true,"SDK 就緒");
+        const u=fb.auth.currentUser;
+        dg("登入身分", !!u, !u ? "沒有取得身分"
+            : u.isAnonymous ? "匿名（前台正常狀態）"
+            : "管理者 "+u.email);
+      }catch(e){
+        dg("Firebase 載入",false,[(e&&e.code)||"",(e&&e.message)||String(e)].filter(Boolean).join(" "));
+        if(e&&String(e.code||"").includes("operation-not-allowed"))
+          dg("要做的事","","Authentication → Sign-in method，把「匿名」打開。");
+        throw e;
+      }
+    }
+    try{
+      doc=await Store.loadDoc();
+      dg("讀取資料",true, doc? "成功" : "成功（雲端上還沒有內容）");
+    }catch(e){
+      const m=String(e&&e.message||e);
+      dg("讀取資料",false,m);
+      if(m.toUpperCase().includes("PERMISSION_DENIED"))
+        dg("要做的事","","被資料庫規則擋住。Realtime Database → 規則，確認 dossier 節點的 .read 有放行已登入使用者。");
+      throw e;
+    }
     if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
     doc.sections.forEach(s=>{s.files=s.files||[]});
+    dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份 / 更新於 "+stampFmt(doc.updated));
+    dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
     if(isAdminUrl()) $("#segMode").style.display="";
     measureTop();
     await renderView();
     setMode(false);
   }catch(err){
-    $("#main").innerHTML='<div class="empty"><b>啟動失敗</b>'+esc(err.message)+"</div>";
+    $("#main").innerHTML='<div class="empty"><b>啟動失敗</b>'+esc(err.message)+
+      '<br><br><button class="btn" onclick="document.getElementById(\'btnDiag\').click()">看連線狀態</button></div>';
   }
 })();
 </script>
