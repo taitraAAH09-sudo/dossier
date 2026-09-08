@@ -209,7 +209,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V10</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V11</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -236,7 +236,6 @@ button{cursor:pointer;border:0;background:none}
   <div class="modal">
     <h3>進入後台</h3>
     <p id="pwHint">後台可以建立章節、上傳檔案、調整標籤要跳到第幾頁。</p>
-    <label class="field" id="mailRow" style="display:none"><span>帳號 (email)</span><input type="email" id="mailInput" autocomplete="username"></label>
     <label class="field"><span>密碼</span><input type="password" id="pwInput" autocomplete="current-password"></label>
     <div class="row"><button class="btn" id="pwCancel">取消</button><button class="btn primary" id="pwOk">進入</button></div>
   </div>
@@ -265,7 +264,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V10
+   活動專卷 V11
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -284,6 +283,9 @@ const FIREBASE_CONFIG = {
 // 留空 = 任何用帳密登入的人都能進後台畫面，真正能不能寫入由資料庫規則決定。
 // 想在前端也擋一層，就把你的 email 填進去。
 const ADMIN_EMAIL = "";
+// 內部識別用帳號：使用者完全看不到、也不用輸入，只在背景送去給 Firebase 驗證。
+// 要先在 Firebase 主控台 → Authentication → Users 手動新增這組帳密（見下方 dg 診斷提示）。
+const INTERNAL_LOGIN_EMAIL = "ops@dossier.internal";
 /* ========================================================= */
 
 const DB_ROOT="dossier", CHUNK=262144;
@@ -694,7 +696,7 @@ function renderAdmin(){
         <span class="tag pdf">管理</span><span class="fn" id="uAdmin"></span>
         <button class="btn" data-copy="admin">複製</button>
       </div>
-      <div class="note">前台不需要登入，長官點開就能看。後台要管理者帳密，資料庫規則只認 <b>${esc(ADMIN_EMAIL||"（尚未設定）")}</b> 能寫入。</div>
+      <div class="note">前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
     </div>
 
     <div class="panel">
@@ -881,8 +883,7 @@ function setMode(a){
 $("#mView").onclick=()=>setMode(false);
 $("#mAdmin").onclick=()=>{
   if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
-  if(CLOUD){$("#mailRow").style.display="";$("#mailInput").value=ADMIN_EMAIL||localStorage.getItem("dossierMail")||"";
-    $("#pwHint").textContent="用管理者帳號登入才能上傳與修改。長官看的前台不需要登入。"}
+  if(CLOUD){$("#pwHint").textContent="輸入後台密碼才能上傳與修改。長官看的前台不需要密碼。"}
   $("#pwMask").classList.add("on");setTimeout(()=>$("#pwInput").focus(),50);
 };
 $("#pwCancel").onclick=()=>{$("#pwMask").classList.remove("on");$("#pwInput").value=""};
@@ -895,18 +896,16 @@ $("#pwOk").onclick=async()=>{
   }
   btn.disabled=true;
   try{
-    await fb.auth.signInWithEmailAndPassword($("#mailInput").value.trim(),$("#pwInput").value);
+    await fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL,$("#pwInput").value);
     if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
-    localStorage.setItem("dossierMail",$("#mailInput").value.trim());
     setMode(true);toast("已登入管理者");
   }catch(err){
-    toast("登入失敗："+(err.code==="auth/invalid-credential"?"帳號或密碼不對":err.message));
+    toast("登入失敗："+(err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"密碼不對":err.message));
   }finally{btn.disabled=false}
 };
 $("#pwInput").onkeydown=e=>{if(e.key==="Enter")$("#pwOk").click()};
-$("#mailInput").onkeydown=e=>{if(e.key==="Enter")$("#pwInput").focus()};
 
 /* 版號連點五下 → 叫出後台入口 */
 let tapN=0,tapT;
@@ -920,7 +919,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V10");
+  dg("版本","","V11");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
