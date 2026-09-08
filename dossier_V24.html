@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>活動專卷</title>
+<style>
+:root{
+  --ink:#16202B; --ink-2:#4A5764; --ink-3:#7C8894;
+  --paper:#FAFAF7; --card:#FFFFFF; --rule:#E3E1D9;
+  --steel:#1F5C8B; --steel-soft:#EAF1F7; --gold:#A87B3C; --danger:#9B3A2F;
+  --rail:196px; --topH:88px;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-l:env(safe-area-inset-left,0px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  font-size:15px;line-height:1.65;-webkit-text-size-adjust:100%}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+:focus-visible{outline:2px solid var(--steel);outline-offset:2px}
+
+/* ---------- header ---------- */
+.top{position:sticky;top:0;z-index:60;background:rgba(250,250,247,.95);
+  backdrop-filter:saturate(1.4) blur(8px);border-bottom:1px solid var(--rule)}
+.top-in{display:flex;align-items:center;gap:10px;padding:10px 16px;max-width:1600px;margin:0 auto}
+.brand{display:flex;flex-direction:column;min-width:0;flex:1}
+.brand b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand span{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ver{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:999px;padding:1px 8px;
+  cursor:default;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.btn{border:1px solid var(--rule);background:var(--card);border-radius:8px;padding:7px 12px;
+  font-size:13px;color:var(--ink-2);white-space:nowrap;transition:background .12s}
+.btn:hover{background:#F2F1EC}
+.btn.primary{background:var(--steel);border-color:var(--steel);color:#fff}
+.btn.primary:hover{background:#1A4E77}
+.btn.danger{color:var(--danger);border-color:#E7D2CE}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--card)}
+.seg button{padding:7px 12px;font-size:13px;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.stamp{display:flex;align-items:center;gap:8px;padding:6px 16px;max-width:1600px;margin:0 auto;
+  border-top:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
+.stamp .dot{width:6px;height:6px;border-radius:50%;background:#4E7A5B;flex:0 0 6px}
+.stamp #stampTx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stamp .hint{flex:1;min-width:0;color:var(--ink-3);white-space:nowrap;overflow:hidden}
+.stamp .hint::before{content:"·";margin:0 7px;color:var(--rule)}
+.stamp .re{padding:3px 10px;font-size:12px;border-radius:7px}
+
+/* ---------- rail ---------- */
+.rail{position:fixed;left:0;top:var(--topH);bottom:0;width:var(--rail);
+  padding:12px 0 calc(20px + var(--safe-b)) var(--safe-l);overflow:auto;z-index:50;
+  background:linear-gradient(90deg,#F2F0EA,#F7F6F1);border-right:1px solid var(--rule)}
+.rail-hd{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-3);
+  letter-spacing:.06em;padding:0 10px 8px}
+.back{display:flex;align-items:center;gap:6px;width:calc(100% - 10px);margin:0 0 8px;
+  padding:7px 10px;border-radius:0 8px 8px 0;font-size:12.5px;color:var(--ink-2);background:#EAE7DF}
+.back:hover{background:#E2DFD5;color:var(--ink)}
+.here{padding:0 10px 10px;font-size:13.5px;font-weight:650;line-height:1.3;color:var(--ink)}
+.tab{display:block;width:calc(100% - 8px);text-align:left;position:relative;background:var(--card);
+  border:1px solid var(--rule);border-left:4px solid var(--c,#B9BDC2);border-radius:0 9px 9px 0;
+  padding:9px 10px 9px 11px;margin:0 0 6px;font-size:13.5px;line-height:1.35;color:var(--ink-2);
+  transition:transform .14s ease,background .14s,color .14s}
+.tab .lb{display:block;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tab .pg{display:block;font-size:11px;color:var(--ink-3);margin-top:1px}
+.tab .num{display:inline-block;font-size:10.5px;font-weight:700;color:var(--c,#7C8894);
+  border:1px solid currentColor;border-radius:4px;padding:0 4px;margin-right:5px;vertical-align:1px;opacity:.8}
+.tab:hover{background:#fff;transform:translateX(3px)}
+.tab.on{background:#fff;color:var(--ink);transform:translateX(6px);box-shadow:2px 1px 6px rgba(20,30,40,.09)}
+.rail-none{padding:0 10px;font-size:12px;color:var(--ink-3)}
+.folder-tab{display:flex;align-items:center;gap:6px;background:#F2F0EA;font-weight:650;cursor:pointer}
+.folder-tab .ic{flex:0 0 auto;font-size:13px}
+.folder-tab .lb{flex:1;font-weight:650}
+.folder-tab .car{flex:0 0 auto;font-size:11px;color:var(--ink-3)}
+.folder-tab:hover{background:#EAE7DF}
+.fold-body{padding-left:12px}
+.tab.sub{width:calc(100% - 20px)}
+
+/* ---------- main ---------- */
+.main{margin-left:var(--rail);padding:20px 24px 140px;max-width:1120px}
+.main.admin{max-width:940px;margin-left:0}
+
+/* 章節總覽 */
+.cover h1{margin:6px 0 4px;font-size:27px;font-weight:650;letter-spacing:.01em}
+.cover .lead{margin:0 0 22px;color:var(--ink-3);font-size:14.5px}
+.folders{display:grid;grid-template-columns:1fr;gap:12px}
+.folder{display:block;text-align:left;background:var(--card);border:1px solid var(--rule);
+  border-left:5px solid var(--c,#B9BDC2);border-radius:10px;padding:14px 15px;transition:box-shadow .14s,transform .14s}
+.folder:hover{box-shadow:0 3px 12px rgba(20,30,40,.09);transform:translateY(-1px)}
+.folder b{display:block;font-size:16.5px;font-weight:600;margin-bottom:3px}
+.folder span{font-size:13.5px;color:var(--ink-3)}
+
+/* 章節內容 */
+.sec-bar{display:flex;align-items:center;gap:10px;margin:0 0 6px}
+.sec-bar h2{margin:0;font-size:20px;font-weight:650;flex:1;min-width:0}
+.file-cap{display:flex;align-items:baseline;gap:10px;margin:52px 0 14px;padding:10px 14px 10px 16px;
+  border-radius:0 8px 8px 0;background:#F5F6F3;border-left:5px solid var(--c,var(--steel));
+  scroll-margin-top:calc(var(--topH) + 12px)}
+.file-cap:first-of-type{margin-top:8px}
+.file-cap b{font-size:15px;font-weight:700}
+.file-cap i{font-style:normal;font-size:12px;color:var(--ink-3);white-space:nowrap}
+.file-cap .fnum{display:inline-block;font-size:11px;font-weight:700;color:var(--c,var(--steel));
+  border:1px solid currentColor;border-radius:4px;padding:0 5px;margin-right:2px;opacity:.85}
+.pages{display:flex;flex-direction:column;gap:14px}
+.page{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:4px;
+  overflow:hidden;box-shadow:0 1px 2px rgba(20,30,40,.05);scroll-margin-top:calc(var(--topH) + 14px)}
+.page canvas,.page img{display:block;width:100%;height:auto}
+.page .ph{width:100%;background:linear-gradient(180deg,#fbfbf9,#f3f2ee)}
+.page .no{position:absolute;right:8px;bottom:8px;font-size:11px;color:var(--ink-3);
+  background:rgba(255,255,255,.9);border:1px solid var(--rule);border-radius:999px;padding:1px 8px}
+.page .zoom{position:absolute;right:8px;top:8px;background:rgba(255,255,255,.92);border:1px solid var(--rule);
+  border-radius:6px;padding:4px 9px;font-size:12px;color:var(--ink-2);opacity:0;transition:opacity .15s}
+.page:hover .zoom{opacity:1}
+.wide-hint{display:none;font-size:12px;color:var(--gold);margin:0 0 6px}
+.attach{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);background:var(--card);
+  border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.attach .ic{width:34px;height:34px;flex:0 0 34px;border-radius:6px;background:var(--steel-soft);
+  color:var(--steel);display:grid;place-items:center;font-size:11px;font-weight:700}
+.attach .tx{flex:1;min-width:0}
+.attach .tx b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.attach .tx span{font-size:12px;color:var(--ink-3)}
+.empty{border:1px dashed var(--rule);border-radius:10px;padding:44px 22px;text-align:center;color:var(--ink-3)}
+.empty b{display:block;color:var(--ink-2);font-size:15px;margin-bottom:6px;font-weight:600}
+.loading{text-align:center;color:var(--ink-3);font-size:13px;padding:40px 0}
+
+/* ---------- admin ---------- */
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:18px;margin-bottom:16px}
+.panel h3{margin:0 0 4px;font-size:15px;font-weight:650}
+.panel .sub{margin:0 0 14px;font-size:12.5px;color:var(--ink-3)}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:12.5px;color:var(--ink-2);margin-bottom:5px}
+.field input,.field select{width:100%;border:1px solid var(--rule);border-radius:8px;padding:9px 11px;background:#fff;font-size:14px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:160px}
+.drop{border:1.5px dashed #CFCCC2;border-radius:10px;padding:24px 18px;text-align:center;background:#FCFCFA}
+.drop.hot{border-color:var(--steel);background:var(--steel-soft)}
+.drop b{display:block;font-size:14.5px;margin-bottom:4px}
+.drop p{margin:0;font-size:12.5px;color:var(--ink-3)}
+.note{background:#FCF7EC;border:1px solid #EADFC6;border-radius:8px;padding:11px 13px;font-size:12.5px;color:#6B5427;margin-top:12px}
+.note b{color:#5A4520}
+.bar{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
+.bar.on{display:block}
+.bar i{display:block;height:100%;background:var(--steel);width:0;transition:width .2s}
+.list{border:1px solid var(--rule);border-radius:10px;overflow:hidden;background:var(--card)}
+.sec-block{border-bottom:1px solid var(--rule)}
+.sec-block:last-child{border-bottom:0}
+.sec-hd{display:flex;align-items:center;gap:8px;padding:10px 11px;background:#F7F6F2}
+.sec-hd .sw{width:6px;height:24px;border-radius:3px;flex:0 0 6px;background:var(--c,#ccc)}
+.sec-hd input{flex:1;min-width:0;border:1px solid transparent;background:transparent;border-radius:6px;padding:5px 7px;font-weight:600;font-size:14px}
+.sec-hd input:focus{background:#fff;border-color:var(--rule)}
+.sec-hd .cnt{font-size:11px;color:var(--ink-3);flex:0 0 auto}
+.frow{display:flex;align-items:center;gap:7px;padding:8px 11px 8px 20px;border-top:1px solid #F1EFE9;flex-wrap:wrap}
+.frow .tag{font-size:11px;border-radius:999px;padding:1px 7px;border:1px solid var(--rule);color:var(--ink-3);flex:0 0 auto}
+.frow .tag.pdf{color:var(--steel);border-color:#C9DCEA;background:var(--steel-soft)}
+.frow .tag.img{color:var(--gold);border-color:#E6D8BC;background:#FBF6EA}
+.frow .fn{flex:1 1 190px;min-width:130px;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.frow input.t{flex:1 1 150px;min-width:110px;border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:13px}
+.frow input.p{width:66px;flex:0 0 66px;border:1px solid var(--rule);border-radius:7px;padding:5px 6px;font-size:13px;text-align:center}
+.frow select.g{flex:1 1 130px;min-width:100px;border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px;color:var(--ink-2);background:#fff}
+.folder-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 11px 8px 20px;border-top:1px solid #F1EFE9;background:#FCFBF8}
+.folder-row .flabel{font-size:11.5px;color:var(--ink-3);flex:0 0 auto}
+.chip{display:flex;align-items:center;gap:2px;border:1px solid var(--rule);border-radius:999px;padding:2px 3px 2px 10px;background:#fff}
+.chip input{border:0;background:transparent;font-size:12.5px;padding:2px;width:9ch;min-width:4ch}
+.chip .ic-btn{width:22px;height:22px;font-size:12px;flex:0 0 22px}
+.addFolder{font-size:12px;border:1px dashed var(--rule);border-radius:999px;padding:4px 11px;color:var(--ink-2);background:#fff;flex:0 0 auto}
+.addFolder:hover{background:#F2F1EC;border-style:solid}
+.grp-hd{display:flex;align-items:center;gap:6px;margin:56px 0 2px;padding-bottom:5px;
+  font-size:13.5px;font-weight:700;color:var(--ink-2);border-bottom:2px solid var(--c,var(--rule))}
+.grp-hd:first-of-type{margin-top:8px}
+.grp-hd .ic{font-size:14px}
+.ic-btn{width:29px;height:29px;border-radius:6px;color:var(--ink-3);display:grid;place-items:center;font-size:15px;flex:0 0 29px}
+.ic-btn:hover{background:#EAE8E2;color:var(--ink)}
+.ic-btn:disabled{opacity:.28;cursor:default}
+.ic-btn:disabled:hover{background:none}
+.lnone{padding:11px 20px;font-size:12.5px;color:var(--ink-3);border-top:1px solid #F1EFE9}
+
+/* ---------- overlay ---------- */
+.mask{position:fixed;inset:0;background:rgba(18,24,30,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:20px}
+.mask.on{display:flex}
+.modal{background:var(--card);border-radius:12px;padding:22px;max-width:400px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.modal h3{margin:0 0 6px;font-size:16px}
+.modal p{margin:0 0 14px;font-size:13px;color:var(--ink-3)}
+.lightbox{position:fixed;inset:0;background:#101418;z-index:120;display:none;flex-direction:column}
+.lightbox.on{display:flex}
+.lb-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;color:#DDE3E8;font-size:13px;border-bottom:1px solid #263038}
+.lb-bar b{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-bar button{color:#DDE3E8;border:1px solid #384450;border-radius:7px;padding:5px 11px;font-size:13px}
+.lb-body{flex:1;overflow:auto;display:grid;place-items:center;padding:10px;touch-action:pinch-zoom}
+.lb-body img{max-width:100%;max-height:100%;object-fit:contain}
+.dg{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #EFEDE6}
+.dg:last-child{border-bottom:0}
+.dg .k{flex:0 0 92px;color:var(--ink-3);font-size:12.5px}
+.dg .v{flex:1;min-width:0;word-break:break-all}
+.dg .v.bad{color:var(--danger);font-weight:600}
+.dg .v.ok{color:#3D6B4E}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--safe-b));
+  background:var(--ink);color:#fff;font-size:13.5px;padding:10px 18px;border-radius:999px;z-index:200;
+  opacity:0;pointer-events:none;transition:opacity .2s;max-width:88vw;text-align:center}
+.toast.on{opacity:1}
+
+/* ---------- mobile ---------- */
+@media (max-width:860px){
+  :root{--rail:82px}
+  .main{padding:14px 12px 120px}
+  .rail{padding-top:10px}
+  .rail-hd{display:none}
+  .back{font-size:11.5px;padding:7px 6px;justify-content:center;gap:3px}
+  .here{font-size:12px;padding:0 6px 8px;text-align:center}
+  .tab{padding:8px 6px;border-left-width:3px;border-radius:0 7px 7px 0;text-align:center}
+  .tab .lb{white-space:normal;word-break:normal;overflow-wrap:anywhere;line-height:1.25;font-size:12px;overflow:visible}
+  .tab .pg{font-size:10px;margin-top:2px}
+  .tab .num{display:block;margin:0 auto 3px;width:fit-content}
+  .tab:hover,.tab.on{transform:translateX(2px)}
+  .page .zoom{opacity:1}
+  .wide-hint{display:block}
+  .brand span{font-size:10.5px}
+  .ver{font-size:10px;padding:1px 6px;color:#C6C3BB;border-color:transparent}
+  .top-in{padding:9px 10px;gap:7px}
+  .stamp{padding:5px 10px;font-size:11.5px;flex-wrap:wrap;row-gap:5px}
+  .stamp #stampTx{flex:1 1 100%}
+  .stamp .hint{display:none}
+  .btn{padding:6px 9px;font-size:12.5px}
+  .folders{grid-template-columns:1fr}
+  .cover h1{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top" id="topBar">
+  <div class="top-in">
+    <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V24</span>
+    <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
+      <button id="mView" aria-pressed="true">前台閱讀</button>
+      <button id="mAdmin" aria-pressed="false">後台管理</button>
+    </div>
+    <button class="btn primary" id="btnMerge">整份 PDF</button>
+  </div>
+  <div class="stamp" id="stamp">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="stampTx">內容更新時間</span>
+    <span class="hint">重新整理就是最新版</span>
+    <button class="btn re" id="btnDiag" style="display:none">連線狀態</button>
+    <button class="btn re" id="btnReload">重新整理</button>
+  </div>
+</header>
+
+<nav class="rail" id="rail" aria-label="專卷目錄"></nav>
+
+<main class="main" id="main">
+  <section id="viewPane"></section>
+  <section id="adminPane" style="display:none"></section>
+</main>
+
+<div class="mask" id="pwMask">
+  <div class="modal">
+    <h3>進入後台</h3>
+    <p id="pwHint">後台可以建立章節、上傳檔案、調整標籤要跳到第幾頁。</p>
+    <label class="field"><span>密碼</span><input type="password" id="pwInput" autocomplete="current-password"></label>
+    <div class="row"><button class="btn" id="pwCancel">取消</button><button class="btn primary" id="pwOk">進入</button></div>
+  </div>
+</div>
+
+<div class="mask" id="diagMask">
+  <div class="modal" style="max-width:460px">
+    <h3>連線狀態</h3>
+    <p>這頁是給我們兩個看的，出問題直接截圖給我就好。</p>
+    <div id="diagBody" style="font-size:13px;line-height:1.75"></div>
+    <div class="row" style="margin-top:16px">
+      <button class="btn" id="diagCopy">複製全部</button>
+      <button class="btn primary" id="diagClose">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lb">
+  <div class="lb-bar"><b id="lbName"></b><button id="lbClose">關閉</button></div>
+  <div class="lb-body"><img id="lbImg" alt=""></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>
+/* ============================================================
+   活動專卷 V24
+   兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
+   一次只載入目前章節，切過的留在記憶體
+   資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
+   ============================================================ */
+
+/* === 要填的只有這兩塊 ===================================== */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyAUZJpSuQjUSCEKxAneePkEpWXHmwoJvHc",
+  authDomain:        "stagetool-f9ffb.firebaseapp.com",
+  databaseURL:       "https://stagetool-f9ffb-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:         "stagetool-f9ffb",
+  storageBucket:     "stagetool-f9ffb.firebasestorage.app",
+  messagingSenderId: "344934002221",
+  appId:             "1:344934002221:web:858df075753dd3cf7c92a4"
+};
+// 留空 = 任何用帳密登入的人都能進後台畫面，真正能不能寫入由資料庫規則決定。
+// 想在前端也擋一層，就把你的 email 填進去。
+const ADMIN_EMAIL = "";
+// 內部識別用帳號：使用者完全看不到、也不用輸入，只在背景送去給 Firebase 驗證。
+// 要先在 Firebase 主控台 → Authentication → Users 手動新增這組帳密（見下方 dg 診斷提示）。
+const INTERNAL_LOGIN_EMAIL = "ops@dossier.internal";
+/* ========================================================= */
+
+const DB_ROOT="dossier", CHUNK=262144;
+const PASSWORD="taitra2026";       // 只在還沒接 Firebase 的本機測試模式下使用
+const ADMIN_KEY="admin";
+const CLOUD=!!FIREBASE_CONFIG.apiKey;
+const COLORS=["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E","#8A6A2F","#3F6E8C"];
+
+pdfjsLib.GlobalWorkerOptions.workerSrc=
+  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+let adminRevealed=false;
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const kb=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB";
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const isAdminUrl=()=>adminRevealed
+  ||new URLSearchParams(location.search).has(ADMIN_KEY)
+  ||location.hash.replace("#","")===ADMIN_KEY;
+const viewUrl =()=>location.origin+location.pathname;
+const adminUrl=()=>viewUrl()+"?"+ADMIN_KEY;
+
+const diag=[];
+function dg(k,state,msg){ diag.push({k,state,msg:String(msg)}); }
+function paintDiag(){
+  $("#diagBody").innerHTML=diag.map(d=>
+    '<div class="dg"><span class="k">'+esc(d.k)+'</span><span class="v '+
+    (d.state===true?"ok":d.state===false?"bad":"")+'">'+
+    (d.state===true?"✓ ":d.state===false?"✗ ":"")+esc(d.msg)+"</span></div>").join("");
+}
+let toastT;
+function toast(m,ms){const t=$("#toast");t.textContent=m;t.classList.add("on");
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),ms||2600)}
+const stampFmt=ts=>{
+  if(!ts) return "尚未有內容";
+  const d=new Date(ts),w="日一二三四五六"[d.getDay()],two=n=>String(n).padStart(2,"0");
+  return d.getFullYear()+"/"+two(d.getMonth()+1)+"/"+two(d.getDate())+"（"+w+"）"+two(d.getHours())+":"+two(d.getMinutes());
+};
+function paintStamp(){$("#stampTx").textContent="內容更新於 "+stampFmt(doc&&doc.updated)}
+function measureTop(){document.documentElement.style.setProperty("--topH",$("#topBar").offsetHeight+"px")}
+
+/* 檔名拆解：「2-1 2026年PLAS開幕典禮_程序表.pdf」→ 編號 2-1、短名 程序表 */
+function parseName(name){
+  const stem=name.replace(/\.[^.]+$/,"");
+  const m=stem.match(/^(\d+(?:[-–_.]\d+)*)[\s_-]+(.*)$/);
+  const num=m?m[1]:"";
+  let rest=m?m[2]:stem;
+  if(rest.includes("_")) rest=rest.split("_").pop();
+  return {num, label:(rest||stem).trim().slice(0,18)};
+}
+/* 資料夾清單：確保每個章節都有 folders 陣列，並把舊版直接打字留下的子資料夾文字也補成資料夾 */
+function ensureFolders(s){
+  s.folders=Array.isArray(s.folders)?s.folders:[];
+  const known=new Set(s.folders.map(g=>g.title));
+  (s.files||[]).forEach(f=>{
+    const g=(f.group||"").trim();
+    if(g&&!known.has(g)){known.add(g);s.folders.push({id:uid(),title:g})}
+  });
+}
+/* 自然排序：2-2 排在 2-10 前面 */
+function natCmp(a,b){
+  const ax=String(a).match(/\d+|\D+/g)||[], bx=String(b).match(/\d+|\D+/g)||[];
+  for(let i=0;i<Math.max(ax.length,bx.length);i++){
+    const p=ax[i], q=bx[i];
+    if(p===undefined) return -1;
+    if(q===undefined) return 1;
+    const np=parseInt(p,10), nq=parseInt(q,10);
+    if(!isNaN(np)&&!isNaN(nq)){ if(np!==nq) return np-nq; }
+    else if(p!==q) return p<q?-1:1;
+  }
+  return 0;
+}
+
+/* ---------- IndexedDB（本機模式） ---------- */
+const DB_NAME="dossierDB",DB_VER=1;let _db;
+function db(){
+  if(_db) return Promise.resolve(_db);
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=()=>{const d=r.result;
+      if(!d.objectStoreNames.contains("blobs")) d.createObjectStore("blobs");
+      if(!d.objectStoreNames.contains("kv")) d.createObjectStore("kv")};
+    r.onsuccess=()=>{_db=r.result;res(_db)};r.onerror=()=>rej(r.error)});
+}
+function idb(store,mode,fn){
+  return db().then(d=>new Promise((res,rej)=>{
+    const rq=fn(d.transaction(store,mode).objectStore(store));
+    rq.onsuccess=()=>res(rq.result);rq.onerror=()=>rej(rq.error)}));
+}
+
+/* ---------- Firebase ---------- */
+let fb=null;
+async function initCloud(){
+  if(!CLOUD) return;
+  const load=src=>new Promise((res,rej)=>{const s=document.createElement("script");
+    s.src=src;s.onload=res;
+    s.onerror=()=>rej(new Error("載不到 "+src.split("/").pop()+"（網路被擋，或公司防火牆擋掉 gstatic.com）"));
+    document.head.appendChild(s)});
+  const base="https://www.gstatic.com/firebasejs/10.12.2/";
+  await load(base+"firebase-app-compat.js");
+  await load(base+"firebase-auth-compat.js");
+  await load(base+"firebase-database-compat.js");
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fb={auth:firebase.auth(),db:firebase.database()};
+  if(!fb.auth.currentUser) await fb.auth.signInAnonymously();
+}
+const isAdminUser=()=>{
+  const u=fb&&fb.auth.currentUser;
+  if(!u||u.isAnonymous||!u.email) return false;
+  return ADMIN_EMAIL ? u.email===ADMIN_EMAIL : true;
+};
+function blobToB64(blob){
+  return new Promise((res,rej)=>{const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(",")[1]||"");
+    r.onerror=()=>rej(new Error("讀檔失敗"));r.readAsDataURL(blob)});
+}
+function b64ToBytes(b64){
+  const bin=atob(b64),out=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) out[i]=bin.charCodeAt(i);
+  return out;
+}
+
+const Store={
+  async loadDoc(){
+    if(CLOUD){const s=await fb.db.ref(DB_ROOT+"/meta").get();return s.exists()?s.val():null}
+    return idb("kv","readonly",s=>s.get("doc"));
+  },
+  async saveDoc(d){
+    d.updated=Date.now();
+    if(CLOUD) return fb.db.ref(DB_ROOT+"/meta").set(d);
+    return idb("kv","readwrite",s=>s.put(d,"doc"));
+  },
+  async putBlob(id,blob,onPct){
+    if(CLOUD){
+      const b64=await blobToB64(blob), parts={};let n=0;
+      for(let i=0;i<b64.length;i+=CHUNK) parts["c"+String(n++).padStart(4,"0")]=b64.slice(i,i+CHUNK);
+      const keys=Object.keys(parts),BATCH=8;
+      for(let i=0;i<keys.length;i+=BATCH){
+        const slice={};keys.slice(i,i+BATCH).forEach(k=>slice[k]=parts[k]);
+        await fb.db.ref(DB_ROOT+"/blobs/"+id).update(slice);
+        if(onPct) onPct(Math.min(1,(i+BATCH)/keys.length));
+      }
+      return;
+    }
+    await idb("blobs","readwrite",s=>s.put(blob,id));
+  },
+  async getBytes(f){
+    if(CLOUD){
+      const s=await fb.db.ref(DB_ROOT+"/blobs/"+f.id).get();
+      if(!s.exists()) throw new Error("雲端上找不到這個檔案");
+      const p=s.val();
+      return b64ToBytes(Object.keys(p).sort().map(k=>p[k]).join(""));
+    }
+    const b=await idb("blobs","readonly",s=>s.get(f.id));
+    if(!b) throw new Error("找不到檔案");
+    return new Uint8Array(await b.arrayBuffer());
+  },
+  async delBlob(f){
+    if(CLOUD) return fb.db.ref(DB_ROOT+"/blobs/"+f.id).remove();
+    return idb("blobs","readwrite",s=>s.delete(f.id));
+  }
+};
+
+/* ---------- 資料 ----------
+   doc = { title, subtitle,
+           sections:[{id,title,files:[{id,name,label,num,kind,size,pages,jump}]}] }
+--------------------------------------------------------------- */
+let doc=null, activeSec=null;
+let openRailGroups=new Set();
+const blankDoc=()=>({title:"活動專卷",subtitle:"",sections:[],updated:Date.now()});
+const secById=id=>doc.sections.find(s=>s.id===id);
+const secColor=s=>COLORS[doc.sections.indexOf(s)%COLORS.length];
+const allFiles=()=>doc.sections.flatMap(s=>s.files);
+const fileById=id=>allFiles().find(f=>f.id===id);
+const totalSize=()=>allFiles().reduce((a,f)=>a+(f.size||0),0);
+function kindOf(f){
+  const n=f.name.toLowerCase();
+  if(n.endsWith(".pdf")||f.type==="application/pdf") return "pdf";
+  if(/\.(png|jpe?g|webp|gif)$/.test(n)||/^image\//.test(f.type)) return "image";
+  return "file";
+}
+
+/* ---------- PDF ---------- */
+const pdfCache=new Map();
+function getPdf(f){
+  if(!pdfCache.has(f.id))
+    pdfCache.set(f.id, Store.getBytes(f).then(b=>pdfjsLib.getDocument({data:b}).promise));
+  return pdfCache.get(f.id);
+}
+const io=new IntersectionObserver(es=>{
+  es.forEach(e=>{if(e.isIntersecting){io.unobserve(e.target);renderPage(e.target)}})
+},{rootMargin:"700px 0px"});
+
+async function renderPage(el){
+  const f=fileById(el.dataset.file),num=+el.dataset.page;
+  if(!f) return;
+  try{
+    const pdf=await getPdf(f), page=await pdf.getPage(num);
+    const base=page.getViewport({scale:1});
+    const dpr=Math.min((window.devicePixelRatio||1)*1.5,4);
+    const vp=page.getViewport({scale:Math.min(((el.clientWidth||800)*dpr)/base.width,6)});
+    const cv=document.createElement("canvas");
+    cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+    await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+    el.querySelector(".ph")?.remove();
+    el.insertBefore(cv,el.firstChild);
+  }catch(err){
+    el.innerHTML='<div style="padding:26px;text-align:center;color:var(--ink-3);font-size:13px">這一頁讀不出來：'+esc(err.message)+"</div>";
+  }
+}
+
+/* ---------- 左側：兩層 ---------- */
+function renderRail(){
+  const r=$("#rail");
+  if(!doc.sections.length){ r.innerHTML='<div class="rail-none">還沒有章節</div>'; return; }
+  if(!activeSec){
+    r.innerHTML='<div class="rail-hd">章節</div>'+doc.sections.map((s,i)=>
+      '<button class="tab" data-sec="'+s.id+'" style="--c:'+COLORS[i%COLORS.length]+'">'+
+      '<span class="lb">'+esc(s.title)+'</span>'+
+      '<span class="pg">'+s.files.length+' 份</span></button>').join("");
+    return;
+  }
+  const s=secById(activeSec);
+  if(!s){ activeSec=null; return renderRail(); }
+  const c=secColor(s);
+  let body="";
+  if(s.files.length){
+    let lastGroup=null, occ=0, insideFold=false;
+    s.files.forEach(f=>{
+      const g=f.group||"";
+      if(g!==lastGroup){
+        lastGroup=g;
+        if(insideFold){ body+="</div>"; insideFold=false; }
+        if(g){
+          occ++;
+          const key=s.id+"::"+occ+"::"+g;
+          const open=openRailGroups.has(key);
+          body+='<button class="tab folder-tab" data-fold="'+key+'" style="--c:'+c+'" aria-expanded="'+open+'">'+
+                '<span class="ic">📁</span><span class="lb">'+esc(g)+'</span>'+
+                '<span class="car">'+(open?"▾":"▸")+'</span></button>'+
+                '<div class="fold-body" data-foldbody="'+key+'"'+(open?"":' style="display:none"')+'>';
+          insideFold=true;
+        }
+      }
+      body+='<button class="tab'+(g?" sub":"")+'" data-file="'+f.id+'" style="--c:'+c+'">'+
+        (f.num?'<span class="num">'+esc(f.num)+"</span>":"")+
+        '<span class="lb">'+esc(f.label||f.name)+"</span>"+
+        (f.kind==="pdf"&&f.jump>1?'<span class="pg">第 '+f.jump+" 頁</span>":"")+
+        "</button>";
+    });
+    if(insideFold) body+="</div>";
+  } else {
+    body='<div class="rail-none">這一章還沒有檔案</div>';
+  }
+  r.innerHTML='<button class="back" id="railBack">← 全部章節</button>'+
+    '<div class="here">'+esc(s.title)+"</div>"+body;
+}
+
+$("#rail").addEventListener("click",e=>{
+  if(e.target.closest("#railBack")){ activeSec=null; renderRail(); renderView(); window.scrollTo({top:0,behavior:"smooth"}); return; }
+  const sb=e.target.closest("[data-sec]");
+  if(sb){ openSection(sb.dataset.sec); return; }
+  const fold=e.target.closest("[data-fold]");
+  if(fold){
+    const key=fold.dataset.fold, open=openRailGroups.has(key);
+    if(open) openRailGroups.delete(key); else openRailGroups.add(key);
+    const bd=$("#rail").querySelector('[data-foldbody="'+key+'"]');
+    if(bd) bd.style.display=open?"none":"";
+    fold.setAttribute("aria-expanded",String(!open));
+    const car=fold.querySelector(".car"); if(car) car.textContent=open?"▸":"▾";
+    return;
+  }
+  const fbn=e.target.closest("[data-file]");
+  if(fbn){
+    const f=fileById(fbn.dataset.file);
+    const el=document.getElementById("pg-"+f.id+"-"+clamp(f.jump||1,1,f.pages||1))
+          ||document.getElementById("cap-"+f.id);
+    if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
+    document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===fbn));
+  }
+});
+function openSection(id){
+  activeSec=id; renderRail(); renderView();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ---------- 捲動時，左側標籤跟著亮目前看到的檔案 ---------- */
+let spyRAF=null;
+window.addEventListener("scroll",()=>{
+  if(spyRAF) return;
+  spyRAF=requestAnimationFrame(()=>{updateActiveTab();spyRAF=null});
+},{passive:true});
+function updateActiveTab(){
+  if(!activeSec) return;
+  const caps=[...document.querySelectorAll(".file-cap")];
+  if(!caps.length) return;
+  const refY=($("#topBar")?.offsetHeight||88)+16;
+  let current=caps[0];
+  for(const cap of caps){
+    if(cap.getBoundingClientRect().top-refY<=0) current=cap; else break;
+  }
+  const fid=current.id.replace("cap-","");
+  document.querySelectorAll(".tab[data-file]").forEach(t=>t.classList.toggle("on",t.dataset.file===fid));
+  const activeTab=document.querySelector('.tab[data-file="'+fid+'"]');
+  const fbody=activeTab&&activeTab.closest(".fold-body");
+  if(fbody&&fbody.style.display==="none"){
+    fbody.style.display="";
+    const key=fbody.dataset.foldbody;
+    openRailGroups.add(key);
+    const hd=document.querySelector('[data-fold="'+key+'"]');
+    if(hd){ hd.setAttribute("aria-expanded","true"); const car=hd.querySelector(".car"); if(car) car.textContent="▾"; }
+  }
+}
+
+/* ---------- 前台內容 ---------- */
+async function renderView(){
+  $("#hdTitle").textContent=doc.title||"活動專卷";
+  $("#hdSub").textContent=doc.subtitle||"";
+  document.title=(doc.title||"活動專卷");
+  paintStamp(); measureTop(); renderRail();
+  const pane=$("#viewPane");
+
+  if(!doc.sections.length){
+    pane.innerHTML='<div class="empty"><b>專卷還是空的</b>先到後台建立章節、上傳 PDF。</div>';
+    return;
+  }
+  if(!activeSec){   // 章節總覽
+    pane.innerHTML='<div class="cover"><h1>'+esc(doc.title||"活動專卷")+"</h1>"+
+      '<p class="lead">'+(doc.subtitle?esc(doc.subtitle)+"　·　":"")+
+      "共 "+doc.sections.length+" 個章節、"+allFiles().length+" 份文件</p>"+
+      '<div class="folders">'+doc.sections.map((s,i)=>{
+        const sz=s.files.reduce((a,f)=>a+(f.size||0),0);
+        return '<button class="folder" data-sec="'+s.id+'" style="--c:'+COLORS[i%COLORS.length]+'">'+
+               "<b>"+esc(s.title)+"</b><span>"+s.files.length+" 份 · "+kb(sz)+"</span></button>";
+      }).join("")+"</div></div>";
+    pane.querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>openSection(b.dataset.sec));
+    return;
+  }
+
+  const s=secById(activeSec), c=secColor(s);
+  pane.innerHTML='<div class="sec-bar"><h2>'+esc(s.title)+"</h2>"+
+    '<button class="btn" id="btnSecPdf">下載本章</button></div>'+
+    '<p class="lead" style="margin:0 0 14px;color:var(--ink-3);font-size:13px">'+
+    s.files.length+" 份文件</p>"+
+    (s.files.length?'<div class="loading">載入中…</div>':'<div class="empty">這一章還沒有檔案</div>');
+  $("#btnSecPdf")?.addEventListener("click",()=>mergePdf(s));
+  if(!s.files.length) return;
+
+  let html="";
+  let lastGroup=null;
+  s.files.forEach((f,i)=>{
+    const g=f.group||"";
+    if(g!==lastGroup){
+      lastGroup=g;
+      if(g) html+='<div class="grp-hd" style="--c:'+c+'"><span class="ic">📁</span>'+esc(g)+"</div>";
+    }
+    html+='<div class="file-cap" id="cap-'+f.id+'" style="--c:'+c+'"><span class="fnum">'+(i+1)+"/"+s.files.length+"</span><b>"+
+          (f.num?esc(f.num)+"　":"")+esc(f.label||f.name)+"</b><i>"+kb(f.size)+
+          (f.kind==="pdf"?"　共 "+f.pages+" 頁":"")+"</i></div>";
+    if(f.kind==="pdf") html+='<div class="pages" data-pdf="'+f.id+'"></div>';
+    else if(f.kind==="image") html+='<div class="pages"><div class="page" id="pg-'+f.id+'-1" data-img="'+f.id+'"><div class="ph" style="height:200px"></div></div></div>';
+    else html+='<div class="attach"><div class="ic">'+esc((f.name.split(".").pop()||"檔").slice(0,4).toUpperCase())+
+         '</div><div class="tx"><b>'+esc(f.name)+"</b><span>"+kb(f.size)+
+         "　這個格式沒辦法在頁面上翻閱，請下載開啟</span></div>"+
+         '<button class="btn" data-dl="'+f.id+'">下載</button></div>';
+  });
+  pane.querySelector(".loading")?.remove();
+  pane.insertAdjacentHTML("beforeend",html);
+  updateActiveTab();
+
+  for(const f of s.files){
+    if(f.kind==="pdf"){
+      const box=pane.querySelector('[data-pdf="'+f.id+'"]'); if(!box) continue;
+      try{
+        const pdf=await getPdf(f); f.pages=pdf.numPages;
+        let wide=false,frag="";
+        for(let n=1;n<=pdf.numPages;n++){
+          const vp=(await pdf.getPage(n)).getViewport({scale:1});
+          if(vp.width>vp.height*1.2) wide=true;
+          frag+='<div class="page" id="pg-'+f.id+"-"+n+'" data-file="'+f.id+'" data-page="'+n+'">'+
+                '<div class="ph" style="padding-top:'+((vp.height/vp.width)*100).toFixed(2)+'%"></div>'+
+                '<button class="zoom">放大</button><span class="no">'+n+" / "+pdf.numPages+"</span></div>";
+        }
+        box.innerHTML=frag;
+        if(wide){
+          const h=document.createElement("p");h.className="wide-hint";
+          h.textContent="橫式投影片：點右上角「放大」可全螢幕看，手機轉橫向更清楚。";
+          box.parentNode.insertBefore(h,box);
+        }
+        box.querySelectorAll(".page").forEach(p=>io.observe(p));
+      }catch(err){ box.innerHTML='<div class="empty">這份檔案打不開：'+esc(err.message)+"</div>"; }
+    }
+    if(f.kind==="image"){
+      const el=pane.querySelector('[data-img="'+f.id+'"]'); if(!el) continue;
+      try{
+        const url=URL.createObjectURL(new Blob([await Store.getBytes(f)]));
+        el.insertAdjacentHTML("afterbegin",'<img src="'+url+'" alt="'+esc(f.name)+'">');
+        el.querySelector(".ph")?.remove();
+        el.insertAdjacentHTML("beforeend",'<button class="zoom">放大</button>');
+      }catch(err){}
+    }
+  }
+}
+
+/* 放大 / 附件下載 */
+document.addEventListener("click",async e=>{
+  const z=e.target.closest(".zoom");
+  if(z){
+    const p=z.closest(".page"),name=(p.closest(".pages")?.previousElementSibling?.textContent||"").trim();
+    const fid=p.dataset.file,num=+p.dataset.page;
+    if(fid&&num){
+      // PDF 頁面：放大時重新用高解析度畫一次，而不是直接拉伸小張的縮圖
+      $("#lbName").textContent=name; $("#lbImg").src=""; $("#lb").classList.add("on");
+      try{
+        const f=fileById(fid), pdf=await getPdf(f), page=await pdf.getPage(num);
+        const base=page.getViewport({scale:1});
+        const target=Math.max(window.innerWidth,window.innerHeight)*Math.min(window.devicePixelRatio||1,3);
+        const vp=page.getViewport({scale:Math.min(target/base.width,7)});
+        const cv=document.createElement("canvas");
+        cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
+        await page.render({canvasContext:cv.getContext("2d"),viewport:vp}).promise;
+        $("#lbImg").src=cv.toDataURL("image/jpeg",.95);
+      }catch(err){
+        const cv=p.querySelector("canvas");
+        if(cv) $("#lbImg").src=cv.toDataURL("image/jpeg",.92);
+        else toast("這一頁還在載入，等一下再試");
+      }
+      return;
+    }
+    const cv=p.querySelector("canvas"),im=p.querySelector("img");
+    const src=cv?cv.toDataURL("image/jpeg",.92):im?im.src:null;
+    if(!src) return toast("這一頁還在載入，等一下再試");
+    $("#lbImg").src=src; $("#lbName").textContent=name;
+    $("#lb").classList.add("on"); return;
+  }
+  const dl=e.target.closest("[data-dl]");
+  if(dl){const f=fileById(dl.dataset.dl);
+    if(f) Store.getBytes(f).then(b=>saveBlob(new Blob([b]),f.name))}
+});
+$("#lbClose").onclick=()=>$("#lb").classList.remove("on");
+document.addEventListener("keydown",e=>{if(e.key==="Escape")$("#lb").classList.remove("on")});
+
+/* ---------- 合併 PDF ---------- */
+function saveBlob(blob,name){
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+async function mergePdf(section){
+  const files=(section?section.files:allFiles()).filter(f=>f.kind==="pdf"||f.kind==="image");
+  if(!files.length) return toast("沒有可以合併的內容");
+  const btn=section?$("#btnSecPdf"):$("#btnMerge");
+  const label=btn.textContent; btn.disabled=true; btn.textContent="整理中…";
+  try{
+    const {PDFDocument,StandardFonts,rgb}=PDFLib;
+    const out=await PDFDocument.create(); let skipped=0;
+    for(const f of files){
+      try{
+        const bytes=await Store.getBytes(f);
+        if(f.kind==="pdf"){
+          const src=await PDFDocument.load(bytes,{ignoreEncryption:true});
+          (await out.copyPages(src,src.getPageIndices())).forEach(p=>out.addPage(p));
+        }else{
+          const img=f.name.toLowerCase().endsWith(".png")?await out.embedPng(bytes):await out.embedJpg(bytes);
+          out.addPage([img.width,img.height]).drawImage(img,{x:0,y:0,width:img.width,height:img.height});
+        }
+      }catch(err){skipped++}
+    }
+    if(!out.getPageCount()) throw new Error("沒有任何一頁合併成功");
+    try{
+      const font=await out.embedFont(StandardFonts.Helvetica);
+      const d=new Date(),two=n=>String(n).padStart(2,"0");
+      const mark=two(d.getMonth()+1)+"/"+two(d.getDate())+"  "+two(d.getHours())+":"+two(d.getMinutes());
+      const pg=out.getPage(0),size=9;
+      pg.drawText(mark,{x:pg.getWidth()-font.widthOfTextAtSize(mark,size)-18,y:14,size,font,color:rgb(.55,.57,.6)});
+    }catch(e){}
+    const nm=((section?doc.title+"_"+section.title:doc.title)||"專卷").replace(/[\\/:*?"<>|]/g,"");
+    saveBlob(new Blob([await out.save()],{type:"application/pdf"}),nm+".pdf");
+    toast(skipped?"已下載，"+skipped+" 個檔案略過":"已下載 PDF");
+  }catch(err){toast("合併失敗："+err.message)}
+  finally{btn.disabled=false;btn.textContent=label}
+}
+$("#btnMerge").onclick=()=>mergePdf(null);
+$("#btnReload").onclick=()=>location.reload();
+$("#btnDiag").onclick=()=>{paintDiag();$("#diagMask").classList.add("on")};
+$("#diagClose").onclick=()=>$("#diagMask").classList.remove("on");
+$("#diagCopy").onclick=async()=>{
+  const t=diag.map(d=>d.k+"："+(d.state===true?"OK ":d.state===false?"NG ":"")+d.msg).join("\n");
+  try{await navigator.clipboard.writeText(t);toast("已複製")}catch(e){prompt("手動複製：",t)}
+};
+addEventListener("resize",measureTop);
+
+/* ---------- 後台 ---------- */
+function renderAdmin(){
+  $("#adminPane").innerHTML=`
+    <div class="panel">
+      <h3>兩組網址</h3>
+      <p class="sub">給長官的是上面那條，畫面上不會有後台按鈕。</p>
+      <div class="frow" style="border:1px solid var(--rule);border-radius:9px;margin-bottom:8px;padding-left:11px">
+        <span class="tag">閱讀</span><span class="fn" id="uView"></span>
+        <button class="btn" data-copy="view">複製</button>
+      </div>
+      <div class="frow" style="border:1px solid var(--rule);border-radius:9px;padding-left:11px">
+        <span class="tag pdf">管理</span><span class="fn" id="uAdmin"></span>
+        <button class="btn" data-copy="admin">複製</button>
+      </div>
+      <div class="note">前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
+    </div>
+
+    <div class="panel">
+      <h3>專卷資訊</h3>
+      <div class="row">
+        <label class="field"><span>標題</span><input id="fTitle" value="${esc(doc.title)}"></label>
+        <label class="field"><span>副標</span><input id="fSub" value="${esc(doc.subtitle)}"></label>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>上傳檔案</h3>
+      <p class="sub">選好章節再拖檔案進來。同一批會依檔名的數字自然排序，2-2 會排在 2-10 前面。</p>
+      <label class="field"><span>放進哪一個章節</span>
+        <select id="fSec">${doc.sections.map(s=>'<option value="'+s.id+'">'+esc(s.title)+"</option>").join("")}</select>
+      </label>
+      <div class="drop" id="drop">
+        <b>把檔案拖進來，或點一下選檔</b>
+        <p>PDF 和圖片會直接排進閱讀頁，其他格式放成附件。</p>
+        <input type="file" id="fInput" multiple hidden>
+      </div>
+      <div class="bar" id="upBar"><i></i></div>
+      <div class="note"><b>PowerPoint 和 Word 請先另存 PDF 再上傳。</b>
+        瀏覽器沒辦法忠實還原 .pptx／.docx 的排版。目前專卷共 ${kb(totalSize())}。</div>
+    </div>
+
+    <div class="panel">
+      <h3>章節與檔案</h3>
+      <p class="sub">章節順序＝左側標籤順序。每份檔案可以自己取顯示名稱，還可以指定點下去要跳到第幾頁。</p>
+      <div class="list" id="secList"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="addSec">新增章節</button>
+        <button class="btn" id="signOut">登出管理者</button>
+        <button class="btn danger" id="wipe">清空整份專卷</button>
+      </div>
+    </div>`;
+
+  $("#uView").textContent=viewUrl(); $("#uAdmin").textContent=adminUrl();
+  $("#adminPane").querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
+    const u=b.dataset.copy==="admin"?adminUrl():viewUrl();
+    try{await navigator.clipboard.writeText(u);toast("已複製網址")}catch(e){prompt("手動複製：",u)}
+  });
+  $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
+  $("#fSub").oninput=e=>{doc.subtitle=e.target.value;$("#hdSub").textContent=e.target.value;save()};
+  $("#addSec").onclick=()=>{
+    doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
+    save();renderAdmin()};
+  const so=$("#signOut");
+  if(so){ so.style.display=CLOUD?"":"none";
+    so.onclick=async()=>{ await fb.auth.signOut(); await fb.auth.signInAnonymously();
+      toast("已登出，回到前台"); setMode(false); }; }
+  $("#wipe").onclick=async()=>{
+    if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
+    if(!confirm("再確認一次：這個動作沒辦法復原。")) return;
+    if(prompt('確定的話請輸入「清空」兩個字')!=="清空") return toast("已取消");
+    for(const f of allFiles()) await Store.delBlob(f);
+    doc=blankDoc();activeSec=null;pdfCache.clear();
+    await save();renderAdmin();renderView();toast("已清空")};
+  bindDrop(); renderSecList();
+}
+
+const move=(arr,from,to)=>{if(to<0||to>=arr.length)return;arr.splice(to,0,arr.splice(from,1)[0])};
+
+function renderSecList(){
+  const box=$("#secList");
+  if(!doc.sections.length){box.innerHTML='<div class="lnone" style="border:0">還沒有章節，先按下面的「新增章節」。</div>';return}
+  doc.sections.forEach(ensureFolders);
+  box.innerHTML=doc.sections.map((s,si)=>`
+    <div class="sec-block">
+      <div class="sec-hd">
+        <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
+        <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
+        <span class="cnt">${s.files.length} 份</span>
+        <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
+        <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
+        <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
+        <button class="ic-btn" data-sdel="${s.id}" title="刪除章節">✕</button>
+      </div>
+      <div class="folder-row">
+        <span class="flabel">📁 這一章的資料夾：</span>
+        ${s.folders.map(g=>`
+          <span class="chip">
+            <input value="${esc(g.title)}" data-gname="${g.id}" data-sid="${s.id}" aria-label="資料夾名稱">
+            <button class="ic-btn" data-gdel="${g.id}" data-sid="${s.id}" title="刪除資料夾">✕</button>
+          </span>`).join("")}
+        <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
+      </div>
+      ${s.files.length? s.files.map((f,fi)=>`
+        <div class="frow">
+          <span class="tag ${f.kind==="pdf"?"pdf":f.kind==="image"?"img":""}">${f.num||(f.kind==="pdf"?"PDF":"檔")}</span>
+          <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
+          <select class="g" data-fgroupsel="${f.id}" aria-label="子資料夾">
+            <option value="">（不指定資料夾）</option>
+            ${s.folders.map(g=>`<option value="${esc(g.title)}" ${f.group===g.title?"selected":""}>${esc(g.title)}</option>`).join("")}
+          </select>
+          <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁" title="點標籤時跳到第幾頁">
+          <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
+          <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
+          <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
+          <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
+        </div>`).join("") : '<div class="lnone">這一章還沒有檔案</div>'}
+    </div>`).join("");
+
+  box.querySelectorAll("[data-sname]").forEach(el=>el.onchange=()=>{
+    secById(el.dataset.sname).title=el.value.trim()||"未命名章節";save();renderAdmin()});
+  box.querySelectorAll("[data-flabel]").forEach(el=>el.onchange=()=>{
+    fileById(el.dataset.flabel).label=el.value.trim();save()});
+  box.querySelectorAll("[data-fgroupsel]").forEach(el=>el.onchange=()=>{
+    fileById(el.dataset.fgroupsel).group=el.value;save();renderAdmin()});
+  box.querySelectorAll("[data-gname]").forEach(el=>el.onchange=()=>{
+    const s=secById(el.dataset.sid),g=s.folders.find(x=>x.id===el.dataset.gname);
+    const old=g.title,nv=el.value.trim()||old;
+    if(nv!==old){ s.files.forEach(f=>{if(f.group===old) f.group=nv}); g.title=nv }
+    save();renderAdmin()});
+  box.querySelectorAll("[data-fjump]").forEach(el=>el.onchange=()=>{
+    const f=fileById(el.dataset.fjump);
+    f.jump=clamp(parseInt(el.value,10)||1,1,f.pages||1);el.value=f.jump;save()});
+
+  box.onclick=async e=>{
+    const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+    const secOf=fid=>doc.sections.find(s=>s.files.some(f=>f.id===fid));
+    if(d.sup||d.sdn){
+      const id=d.sup||d.sdn,i=doc.sections.findIndex(s=>s.id===id);
+      move(doc.sections,i,i+(d.sup?-1:1));
+    }else if(d.ssort){
+      const s=secById(d.ssort);
+      s.files.sort((a,b2)=>natCmp(a.name,b2.name));
+      toast("已依檔名排好");
+    }else if(d.sdel){
+      const s=secById(d.sdel);
+      if(s.files.length&&!confirm("「"+s.title+"」裡有 "+s.files.length+" 份檔案，要一起刪掉嗎？")) return;
+      for(const f of s.files) await Store.delBlob(f);
+      doc.sections=doc.sections.filter(x=>x.id!==d.sdel);
+      if(activeSec===d.sdel) activeSec=null;
+    }else if(d.fup||d.fdn){
+      const id=d.fup||d.fdn,s=secOf(id),i=s.files.findIndex(f=>f.id===id);
+      move(s.files,i,i+(d.fup?-1:1));
+    }else if(d.fdel){
+      const s=secOf(d.fdel),f=s.files.find(x=>x.id===d.fdel);
+      if(!confirm("刪除「"+f.name+"」？")) return;
+      await Store.delBlob(f);
+      s.files=s.files.filter(x=>x.id!==d.fdel);
+      pdfCache.delete(d.fdel);
+    }else if(d.gadd){
+      const s=secById(d.gadd);
+      s.folders=s.folders||[];
+      s.folders.push({id:uid(),title:"新資料夾"+(s.folders.length+1)});
+    }else if(d.gdel){
+      const s=secById(d.sid),g=s.folders.find(x=>x.id===d.gdel);
+      if(!g) return;
+      const cnt=s.files.filter(f=>f.group===g.title).length;
+      if(cnt&&!confirm("「"+g.title+"」裡有 "+cnt+" 份檔案在用這個資料夾，刪除後這些檔案會變成不指定資料夾，確定嗎？")) return;
+      s.files.forEach(f=>{if(f.group===g.title) f.group=""});
+      s.folders=s.folders.filter(x=>x.id!==d.gdel);
+    }else return;
+    await save();renderAdmin();
+  };
+}
+
+function bindDrop(){
+  const drop=$("#drop"),input=$("#fInput");
+  drop.onclick=()=>input.click();
+  input.onchange=()=>{handleFiles([...input.files]);input.value=""};
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot")}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hot")}));
+  drop.addEventListener("drop",e=>handleFiles([...e.dataTransfer.files]));
+}
+
+async function handleFiles(files){
+  if(!files.length) return;
+  const s=secById($("#fSec").value);
+  if(!s) return toast("先建立一個章節");
+  files.sort((a,b)=>natCmp(a.name,b.name));
+  const bar=$("#upBar"),fill=bar.querySelector("i");bar.classList.add("on");
+  let n=0,ok=0,warned=false;const errs=[];
+  for(const file of files){
+    const kind=kindOf(file);
+    if(/\.(pptx?|docx?)$/i.test(file.name)&&!warned){warned=true;toast("PowerPoint／Word 會存成附件，建議先另存 PDF")}
+    const id=uid();
+    try{
+      let pages=1;
+      if(kind==="pdf"){
+        const buf=new Uint8Array(await file.arrayBuffer());
+        pages=(await pdfjsLib.getDocument({data:buf.slice()}).promise).numPages;
+      }
+      await Store.putBlob(id,file,pct=>{fill.style.width=((n+pct)/files.length*100)+"%"});
+      const p=parseName(file.name);
+      s.files.push({id,name:file.name,label:p.label,num:p.num,kind,size:file.size,pages,jump:1});
+      ok++;
+    }catch(err){errs.push(file.name+"："+err.message)}
+    fill.style.width=(++n/files.length*100)+"%";
+  }
+  if(ok>0){try{await save()}catch(err){errs.push("存檔失敗："+err.message)}}
+  setTimeout(()=>{bar.classList.remove("on");fill.style.width="0"},500);
+  renderAdmin();
+  if(errs.length){
+    toast((ok>0?"加入 "+ok+" 份，":"")+"失敗 "+errs.length+" 份 → "+errs[0],6500);
+  }else{
+    toast("已加入 "+ok+" 份檔案到「"+s.title+"」");
+  }
+}
+
+async function save(){
+  try{await Store.saveDoc(doc);paintStamp()}catch(err){toast("存檔失敗："+err.message)}
+}
+
+/* ---------- 模式 ---------- */
+function setMode(a){
+  if(a&&!isAdminUrl()) return;
+  if(a&&CLOUD&&!isAdminUser()) return;
+  $("#mView").setAttribute("aria-pressed",String(!a));
+  $("#mAdmin").setAttribute("aria-pressed",String(a));
+  $("#viewPane").style.display=a?"none":"";
+  $("#adminPane").style.display=a?"":"none";
+  $("#main").classList.toggle("admin",a);
+  $("#rail").style.display=a?"none":"";
+  $("#btnMerge").style.display=a?"none":"";
+  $("#btnDiag").style.display=a?"":"none";
+  if(a) renderAdmin(); else renderView();
+  window.scrollTo(0,0);
+}
+$("#mView").onclick=()=>setMode(false);
+$("#mAdmin").onclick=()=>{
+  if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
+  if(CLOUD){$("#pwHint").textContent="輸入後台密碼才能上傳與修改。長官看的前台不需要密碼。"}
+  $("#pwMask").classList.add("on");setTimeout(()=>$("#pwInput").focus(),50);
+};
+$("#pwCancel").onclick=()=>{$("#pwMask").classList.remove("on");$("#pwInput").value=""};
+$("#pwOk").onclick=async()=>{
+  const btn=$("#pwOk");
+  if(!CLOUD){
+    if($("#pwInput").value!==PASSWORD) return toast("密碼不對");
+    sessionStorage.setItem("dossierAuth","1");
+    $("#pwMask").classList.remove("on");$("#pwInput").value="";return setMode(true);
+  }
+  btn.disabled=true;
+  try{
+    await fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL,$("#pwInput").value);
+    if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
+      throw new Error("這個帳號不在允許名單內")}
+    $("#pwMask").classList.remove("on");$("#pwInput").value="";
+    setMode(true);toast("已登入管理者");
+  }catch(err){
+    toast("登入失敗："+(err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"密碼不對":err.message));
+  }finally{btn.disabled=false}
+};
+$("#pwInput").onkeydown=e=>{if(e.key==="Enter")$("#pwOk").click()};
+
+/* 版號連點五下 → 叫出後台入口 */
+let tapN=0,tapT;
+$("#verBadge").onclick=()=>{
+  clearTimeout(tapT);tapT=setTimeout(()=>tapN=0,1200);
+  if(++tapN<5) return;
+  tapN=0;
+  if($("#segMode").style.display==="") return toast("後台入口已經開著了");
+  $("#segMode").style.display="";adminRevealed=true;toast("後台入口已開啟");
+};
+
+/* ---------- 啟動 ---------- */
+(async function boot(){
+  dg("版本","","V24");
+  dg("網址","",location.href.slice(0,90));
+  dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
+      ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
+      : location.protocol.replace(":",""));
+  if(!CLOUD){
+    dg("執行模式",false,"本機模式 — FIREBASE_CONFIG.apiKey 還是空的，資料只存在這台裝置的瀏覽器，不會同步。");
+  }else{
+    dg("執行模式",true,"雲端模式 → "+FIREBASE_CONFIG.projectId);
+  }
+  try{
+    if(CLOUD){
+      try{
+        await initCloud();
+        dg("Firebase 載入",true,"SDK 就緒");
+        const u=fb.auth.currentUser;
+        dg("登入身分", !!u, !u ? "沒有取得身分"
+            : u.isAnonymous ? "匿名（前台正常狀態）"
+            : "管理者 "+u.email);
+      }catch(e){
+        dg("Firebase 載入",false,[(e&&e.code)||"",(e&&e.message)||String(e)].filter(Boolean).join(" "));
+        if(e&&String(e.code||"").includes("operation-not-allowed"))
+          dg("要做的事","","Authentication → Sign-in method，把「匿名」打開。");
+        throw e;
+      }
+    }
+    try{
+      doc=await Store.loadDoc();
+      dg("讀取資料",true, doc? "成功" : "成功（雲端上還沒有內容）");
+    }catch(e){
+      const m=String(e&&e.message||e);
+      dg("讀取資料",false,m);
+      if(m.toUpperCase().includes("PERMISSION_DENIED"))
+        dg("要做的事","","被資料庫規則擋住。Realtime Database → 規則，確認 dossier 節點的 .read 有放行已登入使用者。");
+      throw e;
+    }
+    if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
+    doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
+    dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份 / 更新於 "+stampFmt(doc.updated));
+    dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
+    if(isAdminUrl()) $("#segMode").style.display="";
+    measureTop();
+    await renderView();
+    setMode(false);
+  }catch(err){
+    $("#main").innerHTML='<div class="empty"><b>啟動失敗</b>'+esc(err.message)+
+      '<br><br><button class="btn" onclick="document.getElementById(\'btnDiag\').click()">看連線狀態</button></div>';
+  }
+})();
+</script>
+</body>
+</html>
