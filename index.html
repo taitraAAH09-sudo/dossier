@@ -150,7 +150,14 @@ button{cursor:pointer;border:0;background:none}
 .frow .fn{flex:1 1 190px;min-width:130px;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .frow input.t{flex:1 1 150px;min-width:110px;border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:13px}
 .frow input.p{width:66px;flex:0 0 66px;border:1px solid var(--rule);border-radius:7px;padding:5px 6px;font-size:13px;text-align:center}
-.frow input.g{flex:1 1 130px;min-width:100px;border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px;color:var(--ink-2)}
+.frow select.g{flex:1 1 130px;min-width:100px;border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px;color:var(--ink-2);background:#fff}
+.folder-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px 11px 8px 20px;border-top:1px solid #F1EFE9;background:#FCFBF8}
+.folder-row .flabel{font-size:11.5px;color:var(--ink-3);flex:0 0 auto}
+.chip{display:flex;align-items:center;gap:2px;border:1px solid var(--rule);border-radius:999px;padding:2px 3px 2px 10px;background:#fff}
+.chip input{border:0;background:transparent;font-size:12.5px;padding:2px;width:9ch;min-width:4ch}
+.chip .ic-btn{width:22px;height:22px;font-size:12px;flex:0 0 22px}
+.addFolder{font-size:12px;border:1px dashed var(--rule);border-radius:999px;padding:4px 11px;color:var(--ink-2);background:#fff;flex:0 0 auto}
+.addFolder:hover{background:#F2F1EC;border-style:solid}
 .grp-hd{display:flex;align-items:center;gap:6px;margin:56px 0 2px;padding-bottom:5px;
   font-size:13.5px;font-weight:700;color:var(--ink-2);border-bottom:2px solid var(--c,var(--rule))}
 .grp-hd:first-of-type{margin-top:8px}
@@ -218,7 +225,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V20</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V21</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -273,7 +280,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V20
+   活動專卷 V21
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -345,6 +352,15 @@ function parseName(name){
   let rest=m?m[2]:stem;
   if(rest.includes("_")) rest=rest.split("_").pop();
   return {num, label:(rest||stem).trim().slice(0,18)};
+}
+/* 資料夾清單：確保每個章節都有 folders 陣列，並把舊版直接打字留下的子資料夾文字也補成資料夾 */
+function ensureFolders(s){
+  s.folders=Array.isArray(s.folders)?s.folders:[];
+  const known=new Set(s.folders.map(g=>g.title));
+  (s.files||[]).forEach(f=>{
+    const g=(f.group||"").trim();
+    if(g&&!known.has(g)){known.add(g);s.folders.push({id:uid(),title:g})}
+  });
 }
 /* 自然排序：2-2 排在 2-10 前面 */
 function natCmp(a,b){
@@ -777,7 +793,7 @@ function renderAdmin(){
   $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
   $("#fSub").oninput=e=>{doc.subtitle=e.target.value;$("#hdSub").textContent=e.target.value;save()};
   $("#addSec").onclick=()=>{
-    doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[]});
+    doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
@@ -798,6 +814,7 @@ const move=(arr,from,to)=>{if(to<0||to>=arr.length)return;arr.splice(to,0,arr.sp
 function renderSecList(){
   const box=$("#secList");
   if(!doc.sections.length){box.innerHTML='<div class="lnone" style="border:0">還沒有章節，先按下面的「新增章節」。</div>';return}
+  doc.sections.forEach(ensureFolders);
   box.innerHTML=doc.sections.map((s,si)=>`
     <div class="sec-block">
       <div class="sec-hd">
@@ -809,11 +826,23 @@ function renderSecList(){
         <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
         <button class="ic-btn" data-sdel="${s.id}" title="刪除章節">✕</button>
       </div>
+      <div class="folder-row">
+        <span class="flabel">📁 這一章的資料夾：</span>
+        ${s.folders.map(g=>`
+          <span class="chip">
+            <input value="${esc(g.title)}" data-gname="${g.id}" data-sid="${s.id}" aria-label="資料夾名稱">
+            <button class="ic-btn" data-gdel="${g.id}" data-sid="${s.id}" title="刪除資料夾">✕</button>
+          </span>`).join("")}
+        <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
+      </div>
       ${s.files.length? s.files.map((f,fi)=>`
         <div class="frow">
           <span class="tag ${f.kind==="pdf"?"pdf":f.kind==="image"?"img":""}">${f.num||(f.kind==="pdf"?"PDF":"檔")}</span>
           <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
-          <input class="g" value="${esc(f.group||"")}" data-fgroup="${f.id}" aria-label="子資料夾" placeholder="子資料夾（選填）">
+          <select class="g" data-fgroupsel="${f.id}" aria-label="子資料夾">
+            <option value="">（不指定資料夾）</option>
+            ${s.folders.map(g=>`<option value="${esc(g.title)}" ${f.group===g.title?"selected":""}>${esc(g.title)}</option>`).join("")}
+          </select>
           <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁" title="點標籤時跳到第幾頁">
           <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
           <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
@@ -826,8 +855,13 @@ function renderSecList(){
     secById(el.dataset.sname).title=el.value.trim()||"未命名章節";save();renderAdmin()});
   box.querySelectorAll("[data-flabel]").forEach(el=>el.onchange=()=>{
     fileById(el.dataset.flabel).label=el.value.trim();save()});
-  box.querySelectorAll("[data-fgroup]").forEach(el=>el.onchange=()=>{
-    fileById(el.dataset.fgroup).group=el.value.trim();save();renderAdmin()});
+  box.querySelectorAll("[data-fgroupsel]").forEach(el=>el.onchange=()=>{
+    fileById(el.dataset.fgroupsel).group=el.value;save();renderAdmin()});
+  box.querySelectorAll("[data-gname]").forEach(el=>el.onchange=()=>{
+    const s=secById(el.dataset.sid),g=s.folders.find(x=>x.id===el.dataset.gname);
+    const old=g.title,nv=el.value.trim()||old;
+    if(nv!==old){ s.files.forEach(f=>{if(f.group===old) f.group=nv}); g.title=nv }
+    save();renderAdmin()});
   box.querySelectorAll("[data-fjump]").forEach(el=>el.onchange=()=>{
     const f=fileById(el.dataset.fjump);
     f.jump=clamp(parseInt(el.value,10)||1,1,f.pages||1);el.value=f.jump;save()});
@@ -857,6 +891,17 @@ function renderSecList(){
       await Store.delBlob(f);
       s.files=s.files.filter(x=>x.id!==d.fdel);
       pdfCache.delete(d.fdel);
+    }else if(d.gadd){
+      const s=secById(d.gadd);
+      s.folders=s.folders||[];
+      s.folders.push({id:uid(),title:"新資料夾"+(s.folders.length+1)});
+    }else if(d.gdel){
+      const s=secById(d.sid),g=s.folders.find(x=>x.id===d.gdel);
+      if(!g) return;
+      const cnt=s.files.filter(f=>f.group===g.title).length;
+      if(cnt&&!confirm("「"+g.title+"」裡有 "+cnt+" 份檔案在用這個資料夾，刪除後這些檔案會變成不指定資料夾，確定嗎？")) return;
+      s.files.forEach(f=>{if(f.group===g.title) f.group=""});
+      s.folders=s.folders.filter(x=>x.id!==d.gdel);
     }else return;
     await save();renderAdmin();
   };
@@ -963,7 +1008,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V20");
+  dg("版本","","V21");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -1000,7 +1045,7 @@ $("#verBadge").onclick=()=>{
       throw e;
     }
     if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
-    doc.sections.forEach(s=>{s.files=s.files||[]});
+    doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
     dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份 / 更新於 "+stampFmt(doc.updated));
     dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
     if(isAdminUrl()) $("#segMode").style.display="";
