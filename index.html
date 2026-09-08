@@ -38,7 +38,8 @@ button{cursor:pointer;border:0;background:none}
 .brand{display:flex;flex-direction:column;min-width:0;flex:1}
 .brand b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand span{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ver{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:999px;padding:1px 8px}
+.ver{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:999px;padding:1px 8px;
+  cursor:default;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .btn{border:1px solid var(--rule);background:var(--card);border-radius:8px;padding:7px 12px;
   font-size:13px;color:var(--ink-2);white-space:nowrap;transition:background .12s}
 .btn:hover{background:#F2F1EC}
@@ -174,7 +175,8 @@ button{cursor:pointer;border:0;background:none}
   .page .zoom{opacity:1}
   .page.flag::before{font-size:10.5px;padding:2px 8px}
   .wide-hint{display:block}
-  .brand span,.ver{display:none}
+  .brand span{display:none}
+  .ver{font-size:10px;padding:1px 6px;color:#C6C3BB;border-color:transparent}
   .top-in{padding:9px 10px;gap:7px}
   .stamp{padding:5px 10px;font-size:11.5px}
   .stamp #stampTx{flex:1}
@@ -191,7 +193,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver">V5</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V6</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -236,7 +238,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V5
+   活動專卷 V6
    後台：上傳 PDF／圖片，並設定左側索引標籤要跳到哪一個檔案的第幾頁
    前台：連續閱讀，左側標籤點一下直接跳頁
    兩層：網址帶 ?admin 才會出現「後台管理」按鈕，長官拿到的是乾淨網址
@@ -260,8 +262,10 @@ const TAB_COLORS = ["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E"]
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
+let adminRevealed=false;
 const $ = s => document.querySelector(s);
-const isAdminUrl = () => new URLSearchParams(location.search).has(ADMIN_KEY)
+const isAdminUrl = () => adminRevealed
+                      || new URLSearchParams(location.search).has(ADMIN_KEY)
                       || location.hash.replace("#","") === ADMIN_KEY;
 const viewUrl  = () => location.origin + location.pathname;
 const adminUrl = () => viewUrl() + "?" + ADMIN_KEY;
@@ -878,6 +882,18 @@ $("#pwOk").onclick=async()=>{
   }finally{ btn.disabled=false; }
 };
 $("#pwInput").onkeydown=e=>{ if(e.key==="Enter") $("#pwOk").click(); };
+
+/* 版號連點五下 → 叫出後台入口（手機不用打網址） */
+let tapN=0, tapT;
+$("#verBadge").onclick=()=>{
+  clearTimeout(tapT); tapT=setTimeout(()=>tapN=0,1200);
+  if(++tapN < 5) return;
+  tapN=0;
+  if($("#segMode").style.display===""){ return toast("後台入口已經開著了"); }
+  $("#segMode").style.display=""; adminRevealed=true;
+  toast("後台入口已開啟");
+};
+
 $("#mailInput").onkeydown=e=>{ if(e.key==="Enter") $("#pwInput").focus(); };
 
 /* ---------- 啟動 ---------- */
