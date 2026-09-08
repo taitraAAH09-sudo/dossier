@@ -209,7 +209,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V11</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V12</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -264,7 +264,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V11
+   活動專卷 V12
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -318,8 +318,8 @@ function paintDiag(){
     (d.state===true?"✓ ":d.state===false?"✗ ":"")+esc(d.msg)+"</span></div>").join("");
 }
 let toastT;
-function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");
-  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),2600)}
+function toast(m,ms){const t=$("#toast");t.textContent=m;t.classList.add("on");
+  clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove("on"),ms||2600)}
 const stampFmt=ts=>{
   if(!ts) return "尚未有內容";
   const d=new Date(ts),w="日一二三四五六"[d.getDay()],two=n=>String(n).padStart(2,"0");
@@ -839,7 +839,7 @@ async function handleFiles(files){
   if(!s) return toast("先建立一個章節");
   files.sort((a,b)=>natCmp(a.name,b.name));
   const bar=$("#upBar"),fill=bar.querySelector("i");bar.classList.add("on");
-  let n=0,warned=false;
+  let n=0,ok=0,warned=false;const errs=[];
   for(const file of files){
     const kind=kindOf(file);
     if(/\.(pptx?|docx?)$/i.test(file.name)&&!warned){warned=true;toast("PowerPoint／Word 會存成附件，建議先另存 PDF")}
@@ -853,13 +853,18 @@ async function handleFiles(files){
       await Store.putBlob(id,file,pct=>{fill.style.width=((n+pct)/files.length*100)+"%"});
       const p=parseName(file.name);
       s.files.push({id,name:file.name,label:p.label,num:p.num,kind,size:file.size,pages,jump:1});
-    }catch(err){toast("「"+file.name+"」上傳失敗："+err.message)}
+      ok++;
+    }catch(err){errs.push(file.name+"："+err.message)}
     fill.style.width=(++n/files.length*100)+"%";
   }
-  await save();
+  if(ok>0){try{await save()}catch(err){errs.push("存檔失敗："+err.message)}}
   setTimeout(()=>{bar.classList.remove("on");fill.style.width="0"},500);
   renderAdmin();
-  toast("已加入 "+n+" 份檔案到「"+s.title+"」");
+  if(errs.length){
+    toast((ok>0?"加入 "+ok+" 份，":"")+"失敗 "+errs.length+" 份 → "+errs[0],6500);
+  }else{
+    toast("已加入 "+ok+" 份檔案到「"+s.title+"」");
+  }
 }
 
 async function save(){
@@ -919,7 +924,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V11");
+  dg("版本","","V12");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
