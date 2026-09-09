@@ -200,6 +200,10 @@ button{cursor:pointer;border:0;background:none}
 .fitem.muted{opacity:.38}
 .fr1{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .fr1 input.t{flex:1 1 150px;min-width:120px;max-width:250px}
+.numi{width:62px;flex:0 0 62px;border:1px solid #C9DCEA;border-radius:6px;padding:3px 5px;
+  font-size:12px;font-weight:700;text-align:center;color:#0E3F63;background:#E8F1F9}
+.numi::placeholder{color:#9DB4C6;font-weight:600}
+.numi:focus{background:#fff;border-color:var(--steel)}
 .only{flex:0 0 auto;min-width:74px;text-align:center}
 .fr2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--ink-3)}
 .fr2 label{display:flex;align-items:center;gap:5px;white-space:nowrap}
@@ -290,7 +294,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V33</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V34</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -345,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V33
+   活動專卷 V34
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -990,7 +994,7 @@ function renderAdmin(){
 
     <div class="panel">
       <h3>章節與檔案</h3>
-      <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。</p>
+      <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。<br>最左邊的編號預設抓檔名，可以直接改成你要的，留白就不顯示。</p>
       <div class="edview">
         <span>只看</span>
         ${EDITIONS.map(e=>`<button data-edv="${e.k}" class="${EDVIEW===e.k?"on":""}">${esc(e.n)}</button>`).join("")}
@@ -1097,7 +1101,9 @@ function renderSecList(){
       ${s.files.length? s.files.map((f,fi)=>`
         <div class="fitem ${edClass(f)} ${EDVIEW!=="all"&&!edVal(f,EDVIEW)?"muted":""}">
           <div class="fr1">
-            <span class="tag ${f.kind==="pdf"?"pdf":f.kind==="image"?"img":""}">${f.num||(f.kind==="pdf"?"PDF":"檔")}</span>
+            <input class="numi" value="${esc(f.num||"")}" data-fnum="${f.id}" maxlength="10"
+                   placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":"檔"}"
+                   aria-label="編號" title="前台左側標籤上顯示的編號。留白就不顯示。">
             <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
             <span class="edt">${EDITIONS.map(e=>`<button data-fed="${f.id}" data-k="${e.k}" class="${edVal(f,e.k)?"on":"off"}" title="這一份要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
             <span class="only ${edBadge(f).c}">${esc(edBadge(f).t)}</span>
@@ -1119,6 +1125,9 @@ function renderSecList(){
 
   box.querySelectorAll("[data-sname]").forEach(el=>el.onchange=()=>{
     secById(el.dataset.sname).title=el.value.trim()||"未命名章節";save();renderAdmin()});
+  box.querySelectorAll("[data-fnum]").forEach(el=>el.onchange=()=>{
+    fileById(el.dataset.fnum).num=el.value.trim(); save();
+  });
   box.querySelectorAll("[data-flabel]").forEach(el=>el.onchange=()=>{
     fileById(el.dataset.flabel).label=el.value.trim();save()});
   box.querySelectorAll("[data-fgroupsel]").forEach(el=>el.onchange=()=>{
@@ -1321,7 +1330,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V33");
+  dg("版本","","V34");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
