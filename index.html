@@ -218,6 +218,10 @@ button{cursor:pointer;border:0;background:none}
 .sh2 .lbl{flex:0 0 auto}
 .secwarn{display:block;margin-top:7px;font-size:12px;color:#8A5A22;background:#FCF4E4;
   border:1px solid #EADFC6;border-radius:7px;padding:6px 10px}
+.secnote{display:block;margin-top:7px;font-size:12px;color:#1B4C74;background:#EEF5FA;
+  border:1px solid #C9DCEA;border-radius:7px;padding:6px 10px}
+.secnote b{font-weight:700}
+.secnote.off{color:var(--ink-3);background:#F2F1EC;border-color:var(--rule)}
 .sec-hd .mini{display:flex;gap:4px;flex:0 0 auto}
 .sec-hd .mini button{font-size:10.5px;padding:2px 7px;border:1px solid var(--rule);border-radius:5px;
   background:#fff;color:var(--ink-3);white-space:nowrap}
@@ -294,7 +298,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V34</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V35</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -349,7 +353,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V34
+   活動專卷 V35
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -1047,10 +1051,19 @@ function edClass(o){
   return "only-"+on[0];
 }
 function secWarn(s){
-  const bad=EDITIONS.filter(e=>!edVal(s,e.k)&&(s.files||[]).some(f=>edVal(f,e.k)));
-  if(!bad.length) return "";
-  return '<span class="secwarn">⚠ 整章在 '+bad.map(e=>esc(e.n)).join("、")+
-    ' 被關掉，所以底下標成這些版本的檔案在前台一份都不會出現。要放行請把上面那排打開。</span>';
+  const out=[];
+  /* 這一章只給其中一版時，講一句就好，不當成錯誤 */
+  const on=EDITIONS.filter(e=>edVal(s,e.k));
+  if(!on.length) out.push('<span class="secnote off">這一章兩個版本都關著，前台完全不會出現。</span>');
+  else if(on.length<EDITIONS.length)
+    out.push('<span class="secnote">這一章只會出現在 <b>'+on.map(e=>esc(e.n)).join("、")+'</b>，底下的檔案跟著整章一起隱藏。</span>');
+  /* 真正要提醒的：某份檔案在任何版本都看不到 */
+  const dead=(s.files||[]).filter(f=>EDK.every(k=>!(edVal(s,k)&&edVal(f,k))));
+  if(dead.length&&on.length)
+    out.push('<span class="secwarn">⚠ 有 '+dead.length+' 份檔案兩個版本都看不到：'+
+      dead.slice(0,3).map(f=>esc(f.label||f.name)).join("、")+(dead.length>3?" 等":"")+
+      '。通常是檔案被設成「僅某一版」，而整章剛好把那一版關掉了。</span>');
+  return out.join("");
 }
 function edBadge(o){
   const on=EDK.filter(k=>edVal(o,k));
@@ -1330,7 +1343,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V34");
+  dg("版本","","V35");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
