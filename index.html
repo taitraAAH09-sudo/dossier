@@ -3,7 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>活動專卷</title>
+<title>TaipeiPLAS 2026 專卷</title>
+<meta name="description" content="開幕典禮、貴賓名單、活動流程與現場資料，線上翻閱或整份下載。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="TAITRA">
+<meta property="og:title" content="TaipeiPLAS 2026 專卷">
+<meta property="og:description" content="開幕典禮、貴賓名單、活動流程與現場資料，線上翻閱或整份下載。">
 <style>
 :root{
   --ink:#16202B; --ink-2:#4A5764; --ink-3:#7C8894;
@@ -306,7 +311,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V37</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V38</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -361,7 +366,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V37
+   活動專卷 V38
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -401,7 +406,7 @@ const COLORS=["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E","#8A6A
 /* === 前台版本 ===============================================
    同一份資料，兩條網址。用 ?v=xxx 決定看到哪一版。
    要增減版本改這個陣列就好，後台的勾選欄會跟著長出來。 */
-const EDITIONS=[{k:"in",n:"處內版"},{k:"gurus",n:"Gurus"}];
+const EDITIONS=[{k:"in",n:"處內專卷"},{k:"gurus",n:"Gurus專卷"}];
 const EDK=EDITIONS.map(e=>e.k);
 function curEdition(){
   const v=new URLSearchParams(location.search).get("v");
@@ -752,7 +757,7 @@ function updateActiveTab(){
 async function renderView(){
   $("#hdTitle").textContent=doc.title||"活動專卷";
   $("#hdSub").textContent=doc.subtitle||"";
-  document.title=(doc.title||"活動專卷");
+  document.title=(doc.title||"活動專卷")+"｜"+edName(EDITION);
   paintStamp(); paintEdition(); measureTop(); renderRail();
   const pane=$("#viewPane");
 
@@ -1367,7 +1372,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V37");
+  dg("版本","","V38");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
