@@ -28,6 +28,9 @@ button{cursor:pointer;border:0;background:none}
 .brand{display:flex;flex-direction:column;min-width:0;flex:1}
 .brand b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .brand span{font-size:12px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.edpill{font-size:12.5px;font-weight:700;border-radius:999px;padding:3px 13px;
+  background:#DDEBF7;color:#0E3F63;border:1px solid #8FBAD9;white-space:nowrap;flex:0 0 auto}
+.edpill.gurus{background:#F4E3BC;color:#6B4A11;border-color:#D3BC87}
 .ver{font-size:11px;color:var(--ink-3);border:1px solid var(--rule);border-radius:999px;padding:1px 8px;
   cursor:default;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 .btn{border:1px solid var(--rule);background:var(--card);border-radius:8px;padding:7px 12px;
@@ -43,6 +46,10 @@ button{cursor:pointer;border:0;background:none}
 .stamp{display:flex;align-items:center;gap:8px;padding:6px 16px;max-width:1600px;margin:0 auto;
   border-top:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
 .stamp .dot{width:6px;height:6px;border-radius:50%;background:#4E7A5B;flex:0 0 6px}
+.stamp.stale{background:#FCF4E4;border-top-color:#EADFC6}
+.stamp.stale .dot{background:var(--danger)}
+.stamp.stale #stampTx{color:#8A5A22;font-weight:600}
+.stamp.stale .re{background:var(--steel);border-color:var(--steel);color:#fff;font-weight:600}
 .stamp #stampTx{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .stamp .hint{flex:1;min-width:0;color:var(--ink-3);white-space:nowrap;overflow:hidden}
 .stamp .hint::before{content:"·";margin:0 7px;color:var(--rule)}
@@ -172,6 +179,15 @@ button{cursor:pointer;border:0;background:none}
   font-size:13.5px;font-weight:700;color:var(--ink-2);border-bottom:2px solid var(--c,var(--rule))}
 .grp-hd:first-of-type{margin-top:8px}
 .grp-hd .ic{font-size:14px}
+.cap{margin-top:12px;border:1px solid var(--rule);border-radius:9px;padding:11px 13px;background:#F6F9F6}
+.cap.warm{background:#FCF7EC;border-color:#EADFC6}
+.cap.hot{background:#FBEEEC;border-color:#E7D2CE}
+.capbar{height:7px;border-radius:4px;background:#E6E4DC;overflow:hidden;margin-bottom:9px}
+.capbar i{display:block;height:100%;background:#4E7A5B;border-radius:4px}
+.cap.warm .capbar i{background:var(--gold)}
+.cap.hot .capbar i{background:var(--danger)}
+.caprow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px;color:var(--ink-3);line-height:1.7}
+.caprow b{font-size:13.5px;color:var(--ink);font-weight:650}
 .edview{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:12.5px;color:var(--ink-3)}
 .edview button{border:1px solid var(--rule);background:#fff;border-radius:7px;padding:4px 11px;
   font-size:12.5px;color:var(--ink-2)}
@@ -255,6 +271,7 @@ button{cursor:pointer;border:0;background:none}
   .page .zoom{opacity:1}
   .wide-hint{display:block}
   .brand span{font-size:10.5px}
+  .edpill{font-size:11.5px;padding:2px 10px}
   .ver{font-size:10px;padding:1px 6px;color:#C6C3BB;border-color:transparent}
   .top-in{padding:9px 10px;gap:7px}
   .stamp{padding:5px 10px;font-size:11.5px;flex-wrap:wrap;row-gap:5px}
@@ -272,7 +289,8 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V29</span>
+    <span class="edpill" id="edPill"></span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V32</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -299,7 +317,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="modal">
     <h3>進入後台</h3>
     <p id="pwHint">後台可以建立章節、上傳檔案、調整標籤要跳到第幾頁。</p>
-    <label class="field"><span>密碼</span><input type="password" id="pwInput" autocomplete="current-password"></label>
+    <label class="field"><span id="pwLabel">密碼</span><input type="password" id="pwInput" autocomplete="current-password" inputmode="numeric" style="letter-spacing:.5em;font-size:20px;text-align:center"></label>
     <div class="row"><button class="btn" id="pwCancel">取消</button><button class="btn primary" id="pwOk">進入</button></div>
   </div>
 </div>
@@ -327,7 +345,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V29
+   活動專卷 V32
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -349,10 +367,17 @@ const ADMIN_EMAIL = "";
 // 內部識別用帳號：使用者完全看不到、也不用輸入，只在背景送去給 Firebase 驗證。
 // 要先在 Firebase 主控台 → Authentication → Users 手動新增這組帳密（見下方 dg 診斷提示）。
 const INTERNAL_LOGIN_EMAIL = "ops@dossier.internal";
+/* 你只輸入 4 位數字，程式會自動接上下面這段尾巴才送給 Firebase
+   （Firebase 密碼至少 6 碼，靠這段才過得了）。
+   Firebase 主控台那組使用者的密碼要設成：4位數字 + 這段尾巴
+   例如 PIN 用 2870，主控台就打 2870-plas2026 */
+const PIN_SUFFIX = "-plas2026";
+const PIN_LEN = 4;
 /* ========================================================= */
 
 const DB_ROOT="dossier", CHUNK=262144;
-const PASSWORD="taitra2026";       // 只在還沒接 Firebase 的本機測試模式下使用
+const PASSWORD="2870";             // 只在「還沒接 Firebase」的本機測試模式下有效。
+                                   // 接上 Firebase 後，真正的密碼在 Firebase 主控台改，不是改這裡。
 const ADMIN_KEY="admin";
 const CLOUD=!!FIREBASE_CONFIG.apiKey;
 const COLORS=["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E","#8A6A2F","#3F6E8C"];
@@ -379,7 +404,7 @@ const secTitle=(s,i)=>doc.autoNumber===false?s.title
 pdfjsLib.GlobalWorkerOptions.workerSrc=
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
-let adminRevealed=false;
+let adminRevealed=false, admin=false;
 const $=s=>document.querySelector(s);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -410,9 +435,11 @@ const stampFmt=ts=>{
 };
 function paintStamp(){$("#stampTx").textContent="內容更新於 "+stampFmt(doc&&doc.updated)}
 function paintEdition(){
-  const el=$("#hdSub");
-  const base=(doc&&doc.subtitle)?doc.subtitle+"　·　":"";
-  el.textContent=base+edName(EDITION);
+  $("#hdSub").textContent=(doc&&doc.subtitle)||"";
+  const pill=$("#edPill");
+  pill.textContent=edName(EDITION);
+  pill.className="edpill"+(EDITION==="gurus"?" gurus":"");
+  pill.title="目前看的是「"+edName(EDITION)+"」，由網址結尾的 ?v="+EDITION+" 決定。";
 }
 function measureTop(){document.documentElement.style.setProperty("--topH",$("#topBar").offsetHeight+"px")}
 
@@ -550,6 +577,14 @@ const secColor=s=>COLORS[doc.sections.indexOf(s)%COLORS.length];
 const allFiles=()=>doc.sections.flatMap(s=>s.files);
 const fileById=id=>allFiles().find(f=>f.id===id);
 const totalSize=()=>allFiles().reduce((a,f)=>a+(f.size||0),0);
+/* Realtime Database 免費額度：1GB 儲存、每月 10GB 下載量。PDF 轉 base64 約膨脹 4/3。 */
+const FREE_STORE=1073741824, FREE_MONTH=10*1073741824, B64=4/3;
+function capacity(){
+  const raw=totalSize(), used=raw*B64;
+  return { raw, used, pct:used/FREE_STORE*100,
+    leftRaw: Math.max(0,(FREE_STORE-used)/B64),
+    fullDl: used>0 ? Math.floor(FREE_MONTH/used) : 0 };
+}
 function kindOf(f){
   const n=f.name.toLowerCase();
   if(n.endsWith(".pdf")||f.type==="application/pdf") return "pdf";
@@ -873,6 +908,23 @@ async function mergePdf(section){
 }
 $("#btnMerge").onclick=()=>mergePdf(null);
 $("#btnReload").onclick=()=>location.reload();
+
+/* 回到這個分頁時，去雲端問一下後台有沒有改過內容 */
+let staleShown=false;
+async function checkFresh(){
+  if(!CLOUD||!fb||!doc||staleShown||admin) return;
+  try{
+    const snap=await fb.db.ref(DB_ROOT+"/meta/updated").get();
+    const t=snap.val();
+    if(t&&doc.updated&&t!==doc.updated){
+      staleShown=true;
+      $("#stamp").classList.add("stale");
+      $("#stampTx").textContent="後台已經更新過內容，點右邊「重新整理」載入最新版";
+    }
+  }catch(e){}
+}
+addEventListener("focus",checkFresh);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkFresh()});
 $("#btnDiag").onclick=()=>{paintDiag();$("#diagMask").classList.add("on")};
 $("#diagClose").onclick=()=>$("#diagMask").classList.remove("on");
 $("#diagCopy").onclick=async()=>{
@@ -926,7 +978,17 @@ function renderAdmin(){
       </div>
       <div class="bar" id="upBar"><i></i></div>
       <div class="note"><b>PowerPoint 和 Word 請先另存 PDF 再上傳。</b>
-        瀏覽器沒辦法忠實還原 .pptx／.docx 的排版。目前專卷共 ${kb(totalSize())}。</div>
+        瀏覽器沒辦法忠實還原 .pptx／.docx 的排版。</div>
+      ${(()=>{const c=capacity();return `
+      <div class="cap ${c.pct>70?"hot":c.pct>40?"warm":""}">
+        <div class="capbar"><i style="width:${Math.min(100,c.pct).toFixed(1)}%"></i></div>
+        <div class="caprow">
+          <b>已用 ${kb(c.used)} / 1 GB（${c.pct.toFixed(1)}%）</b>
+          <span>檔案本身 ${kb(c.raw)}，存進資料庫會膨脹約三成</span>
+        </div>
+        <div class="caprow"><span>還可以再放大約 <b style="font-size:12.5px">${kb(c.leftRaw)}</b> 的 PDF</span></div>
+        ${c.raw?`<div class="caprow"><span>每月下載量 10 GB：以目前大小算，「整份 PDF」全下載約 ${c.fullDl} 次會用完。長官線上看是一次只載一章，不會這麼耗。</span></div>`:""}
+      </div>`})()}
     </div>
 
     <div class="panel">
@@ -1183,6 +1245,7 @@ async function save(){
 /* ---------- 模式 ---------- */
 function setMode(a){
   if(a&&!isAdminUrl()) return;
+  admin=a;
   if(a&&CLOUD&&!isAdminUser()) return;
   $("#mView").setAttribute("aria-pressed",String(!a));
   $("#mAdmin").setAttribute("aria-pressed",String(a));
@@ -1198,7 +1261,11 @@ function setMode(a){
 $("#mView").onclick=()=>setMode(false);
 $("#mAdmin").onclick=()=>{
   if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
-  if(CLOUD){$("#pwHint").textContent="輸入後台密碼才能上傳與修改。長官看的前台不需要密碼。"}
+  if(CLOUD){
+    $("#pwHint").textContent="輸入 "+PIN_LEN+" 位數字才能上傳與修改。長官看的前台不需要密碼。";
+    $("#pwLabel").textContent=PIN_LEN+" 位數字";
+    $("#pwInput").setAttribute("maxlength",String(PIN_LEN));
+  }
   $("#pwMask").classList.add("on");setTimeout(()=>$("#pwInput").focus(),50);
 };
 $("#pwCancel").onclick=()=>{$("#pwMask").classList.remove("on");$("#pwInput").value=""};
@@ -1211,7 +1278,11 @@ $("#pwOk").onclick=async()=>{
   }
   btn.disabled=true;
   try{
-    await fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL,$("#pwInput").value);
+    const pin=$("#pwInput").value.trim();
+    if(!new RegExp("^\\d{"+PIN_LEN+"}$").test(pin)){
+      btn.disabled=false; return toast("請輸入 "+PIN_LEN+" 位數字");
+    }
+    await fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL, pin+PIN_SUFFIX);
     if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
@@ -1221,6 +1292,11 @@ $("#pwOk").onclick=async()=>{
   }finally{btn.disabled=false}
 };
 $("#pwInput").onkeydown=e=>{if(e.key==="Enter")$("#pwOk").click()};
+$("#pwInput").oninput=e=>{
+  if(!CLOUD) return;
+  e.target.value=e.target.value.replace(/\D/g,"").slice(0,PIN_LEN);
+  if(e.target.value.length===PIN_LEN) $("#pwOk").click();   // 打滿四碼自動送出
+};
 
 /* 版號連點五下 → 叫出後台入口 */
 let tapN=0,tapT;
@@ -1234,7 +1310,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V29");
+  dg("版本","","V32");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -1278,6 +1354,8 @@ $("#verBadge").onclick=()=>{
        +visSections().length+" 章 / "+visSections().reduce((a,x)=>a+visFiles(x).length,0)+" 份）"
        +" / 更新於 "+stampFmt(doc.updated));
     dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
+    { const c=capacity();
+      dg("容量","", kb(c.used)+" / 1 GB（"+c.pct.toFixed(1)+"%），還可再放約 "+kb(c.leftRaw)+" 的 PDF"); }
     if(isAdminUrl()) $("#segMode").style.display="";
     measureTop();
     await renderView();
