@@ -290,7 +290,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V32</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V33</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -345,7 +345,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V32
+   活動專卷 V33
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -378,7 +378,7 @@ const PIN_LEN = 4;
 const DB_ROOT="dossier", CHUNK=262144;
 const PASSWORD="2870";             // 只在「還沒接 Firebase」的本機測試模式下有效。
                                    // 接上 Firebase 後，真正的密碼在 Firebase 主控台改，不是改這裡。
-const ADMIN_KEY="admin";
+
 const CLOUD=!!FIREBASE_CONFIG.apiKey;
 const COLORS=["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E","#8A6A2F","#3F6E8C"];
 
@@ -410,11 +410,9 @@ const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const kb=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(1)+" MB";
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
-const isAdminUrl=()=>adminRevealed
-  ||new URLSearchParams(location.search).has(ADMIN_KEY)
-  ||location.hash.replace("#","")===ADMIN_KEY;
+/* 後台唯一入口＝連點右上角版號五下。網址上沒有任何管理參數。 */
+const isAdminUrl=()=>adminRevealed;
 const viewUrl =()=>location.origin+location.pathname;
-const adminUrl=()=>viewUrl()+"?"+ADMIN_KEY;
 const edUrl=k=>viewUrl()+"?v="+k;
 
 const diag=[];
@@ -946,10 +944,9 @@ function renderAdmin(){
         <button class="btn" data-copy="${e.k}">複製</button>
         <button class="btn" data-open="${e.k}">開來看</button>
       </div>`).join("")}
-      <div class="frow" style="border:1px solid var(--rule);border-radius:9px;padding-left:11px">
-        <span class="tag">管理</span><span class="fn" id="uAdmin"></span>
-        <button class="btn" data-copy="admin">複製</button>
-      </div>
+      <div class="note" style="background:#F2F6FA;border-color:#C9DCEA;color:#1B4C74">
+        <b>後台沒有專屬網址。</b>要進來改東西，在上面任一條網址上連點右上角的版號五下，就會跳出密碼框。
+        所以這兩條網址直接發給長官是安全的。</div>
       <div class="note">改完後台之後，已經開著的前台分頁要重新整理才會變。<br>前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
     </div>
 
@@ -1008,11 +1005,10 @@ function renderAdmin(){
       </div>
     </div>`;
 
-  $("#uAdmin").textContent=adminUrl();
   $("#adminPane").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>
     window.open(edUrl(b.dataset.open),"_blank"));
   $("#adminPane").querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
-    const u=b.dataset.copy==="admin"?adminUrl():edUrl(b.dataset.copy);
+    const u=edUrl(b.dataset.copy);
     try{await navigator.clipboard.writeText(u);toast("已複製網址")}catch(e){prompt("手動複製：",u)}
   });
   $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
@@ -1259,14 +1255,18 @@ function setMode(a){
   window.scrollTo(0,0);
 }
 $("#mView").onclick=()=>setMode(false);
-$("#mAdmin").onclick=()=>{
-  if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
+function openLogin(){
   if(CLOUD){
     $("#pwHint").textContent="輸入 "+PIN_LEN+" 位數字才能上傳與修改。長官看的前台不需要密碼。";
     $("#pwLabel").textContent=PIN_LEN+" 位數字";
     $("#pwInput").setAttribute("maxlength",String(PIN_LEN));
   }
+  $("#pwInput").value="";
   $("#pwMask").classList.add("on");setTimeout(()=>$("#pwInput").focus(),50);
+}
+$("#mAdmin").onclick=()=>{
+  if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1") return setMode(true);
+  openLogin();
 };
 $("#pwCancel").onclick=()=>{$("#pwMask").classList.remove("on");$("#pwInput").value=""};
 $("#pwOk").onclick=async()=>{
@@ -1274,7 +1274,8 @@ $("#pwOk").onclick=async()=>{
   if(!CLOUD){
     if($("#pwInput").value!==PASSWORD) return toast("密碼不對");
     sessionStorage.setItem("dossierAuth","1");
-    $("#pwMask").classList.remove("on");$("#pwInput").value="";return setMode(true);
+    $("#pwMask").classList.remove("on");$("#pwInput").value="";
+    adminRevealed=true;$("#segMode").style.display="";return setMode(true);
   }
   btn.disabled=true;
   try{
@@ -1286,9 +1287,16 @@ $("#pwOk").onclick=async()=>{
     if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
-    setMode(true);toast("已登入管理者");
+    adminRevealed=true;$("#segMode").style.display="";
+    setMode(true);toast("已登入後台");
   }catch(err){
-    toast("登入失敗："+(err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"密碼不對":err.message));
+    const c=err.code||"", typed=$("#pwInput").value||"你的四碼";
+    toast("登入失敗："+(
+      c==="auth/invalid-credential"||c==="auth/wrong-password"
+        ? "密碼不對。Firebase 主控台那組帳號的密碼要設成「"+typed+PIN_SUFFIX+"」" :
+      c==="auth/user-not-found" ? "Firebase 上還沒建立帳號 "+INTERNAL_LOGIN_EMAIL :
+      c==="auth/operation-not-allowed" ? "Firebase 還沒開啟「電子郵件/密碼」登入" :
+      c==="auth/too-many-requests" ? "嘗試太多次，等幾分鐘再試" : err.message), 6000);
   }finally{btn.disabled=false}
 };
 $("#pwInput").onkeydown=e=>{if(e.key==="Enter")$("#pwOk").click()};
@@ -1298,19 +1306,22 @@ $("#pwInput").oninput=e=>{
   if(e.target.value.length===PIN_LEN) $("#pwOk").click();   // 打滿四碼自動送出
 };
 
-/* 版號連點五下 → 叫出後台入口 */
+/* 版號連點五下 → 直接跳出登入框 */
 let tapN=0,tapT;
 $("#verBadge").onclick=()=>{
   clearTimeout(tapT);tapT=setTimeout(()=>tapN=0,1200);
   if(++tapN<5) return;
   tapN=0;
-  if($("#segMode").style.display==="") return toast("後台入口已經開著了");
-  $("#segMode").style.display="";adminRevealed=true;toast("後台入口已開啟");
+  if(admin) return;
+  if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1"){
+    adminRevealed=true;$("#segMode").style.display="";return setMode(true);
+  }
+  openLogin();
 };
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V32");
+  dg("版本","","V33");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -1356,7 +1367,6 @@ $("#verBadge").onclick=()=>{
     dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
     { const c=capacity();
       dg("容量","", kb(c.used)+" / 1 GB（"+c.pct.toFixed(1)+"%），還可再放約 "+kb(c.leftRaw)+" 的 PDF"); }
-    if(isAdminUrl()) $("#segMode").style.display="";
     measureTop();
     await renderView();
     setMode(false);
