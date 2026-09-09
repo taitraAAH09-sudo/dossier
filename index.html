@@ -170,6 +170,34 @@ button{cursor:pointer;border:0;background:none}
   font-size:13.5px;font-weight:700;color:var(--ink-2);border-bottom:2px solid var(--c,var(--rule))}
 .grp-hd:first-of-type{margin-top:8px}
 .grp-hd .ic{font-size:14px}
+.edview{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:12.5px;color:var(--ink-3)}
+.edview button{border:1px solid var(--rule);background:#fff;border-radius:7px;padding:4px 11px;
+  font-size:12.5px;color:var(--ink-2)}
+.edview button.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
+.fitem{padding:9px 12px 9px 14px;border-top:1px solid #F1EFE9;border-left:5px solid #E8E6DF;
+  transition:opacity .12s,background .12s}
+.fitem.only-in{border-left-color:var(--steel);background:#EFF6FB}
+.fitem.only-gurus{border-left-color:var(--gold);background:#FCF6E9}
+.fitem.ed-none{border-left-color:#C9C6BE;background:#F6F5F2;opacity:.6}
+.fitem.muted{opacity:.32}
+.fr1{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.fr2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--ink-3)}
+.fr2 label{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.fitem .grow{flex:1;min-width:8px}
+.only{font-size:11px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.only.in{color:var(--steel);background:var(--steel-soft);border:1px solid #C9DCEA}
+.only.gu{color:var(--gold);background:#FBF6EA;border:1px solid #E6D8BC}
+.only.no{color:var(--ink-3);background:#EFEDE7;border:1px solid var(--rule)}
+.sec-hd .mini{display:flex;gap:4px;flex:0 0 auto}
+.sec-hd .mini button{font-size:10.5px;padding:2px 7px;border:1px solid var(--rule);border-radius:5px;
+  background:#fff;color:var(--ink-3);white-space:nowrap}
+.sec-hd .mini button:hover{background:#EFEDE7;color:var(--ink)}
+.edt{display:flex;gap:3px;flex:0 0 auto}
+.edt button{font-size:10.5px;line-height:1.5;padding:1px 7px;border:1px solid var(--rule);
+  border-radius:5px;color:var(--ink-3);background:#fff;white-space:nowrap}
+.edt button.on{background:var(--steel);border-color:var(--steel);color:#fff;font-weight:600}
+.edt button.on[data-k="gurus"]{background:var(--gold);border-color:var(--gold)}
+.edt button.off{text-decoration:line-through;opacity:.55}
 .ic-btn{width:29px;height:29px;border-radius:6px;color:var(--ink-3);display:grid;place-items:center;font-size:15px;flex:0 0 29px}
 .ic-btn:hover{background:#EAE8E2;color:var(--ink)}
 .ic-btn:disabled{opacity:.28;cursor:default}
@@ -233,7 +261,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V25</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V27</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -288,7 +316,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V25
+   活動專卷 V27
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -318,6 +346,25 @@ const ADMIN_KEY="admin";
 const CLOUD=!!FIREBASE_CONFIG.apiKey;
 const COLORS=["#1F5C8B","#A87B3C","#4E7A5B","#8C4A55","#5A5B8C","#2E7B7E","#8A6A2F","#3F6E8C"];
 
+/* === 前台版本 ===============================================
+   同一份資料，兩條網址。用 ?v=xxx 決定看到哪一版。
+   要增減版本改這個陣列就好，後台的勾選欄會跟著長出來。 */
+const EDITIONS=[{k:"in",n:"處內版"},{k:"gurus",n:"Gurus"}];
+const EDK=EDITIONS.map(e=>e.k);
+function curEdition(){
+  const v=new URLSearchParams(location.search).get("v");
+  return EDK.includes(v)?v:EDK[0];
+}
+let EDITION=curEdition();
+const edName=k=>(EDITIONS.find(e=>e.k===k)||EDITIONS[0]).n;
+/* 沒設定過的一律視為兩版都顯示，舊資料不會因為升版就消失 */
+const edOn=(o,k)=>!(o&&o.eds)||o.eds[k]!==false;
+const visSections=()=>doc.sections.filter(s=>edOn(s,EDITION));
+const visFiles=s=>(s.files||[]).filter(f=>edOn(f,EDITION));
+const stripNum=t=>String(t||"").replace(/^\s*\d+\s*[.、．\-_)]*\s*/,"");
+const secTitle=(s,i)=>doc.autoNumber===false?s.title
+  :String(i+1).padStart(2,"0")+". "+stripNum(s.title);
+
 pdfjsLib.GlobalWorkerOptions.workerSrc=
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 
@@ -332,6 +379,7 @@ const isAdminUrl=()=>adminRevealed
   ||location.hash.replace("#","")===ADMIN_KEY;
 const viewUrl =()=>location.origin+location.pathname;
 const adminUrl=()=>viewUrl()+"?"+ADMIN_KEY;
+const edUrl=k=>viewUrl()+"?v="+k;
 
 const diag=[];
 function dg(k,state,msg){ diag.push({k,state,msg:String(msg)}); }
@@ -350,6 +398,11 @@ const stampFmt=ts=>{
   return d.getFullYear()+"/"+two(d.getMonth()+1)+"/"+two(d.getDate())+"（"+w+"）"+two(d.getHours())+":"+two(d.getMinutes());
 };
 function paintStamp(){$("#stampTx").textContent="內容更新於 "+stampFmt(doc&&doc.updated)}
+function paintEdition(){
+  const el=$("#hdSub");
+  const base=(doc&&doc.subtitle)?doc.subtitle+"　·　":"";
+  el.textContent=base+edName(EDITION);
+}
 function measureTop(){document.documentElement.style.setProperty("--topH",$("#topBar").offsetHeight+"px")}
 
 /* 檔名拆解：「2-1 2026年PLAS開幕典禮_程序表.pdf」→ 編號 2-1、短名 程序表 */
@@ -526,20 +579,23 @@ async function renderPage(el){
 function renderRail(){
   const r=$("#rail");
   if(!doc.sections.length){ r.innerHTML='<div class="rail-none">還沒有章節</div>'; return; }
+  const vs=visSections();
+  if(!vs.length){ r.innerHTML='<div class="rail-none">這個版本沒有勾選任何章節</div>'; return; }
   if(!activeSec){
-    r.innerHTML='<div class="rail-hd">章節</div>'+doc.sections.map((s,i)=>
-      '<button class="tab" data-sec="'+s.id+'" style="--c:'+COLORS[i%COLORS.length]+'">'+
-      '<span class="lb">'+esc(s.title)+'</span>'+
-      '<span class="pg">'+s.files.length+' 份</span></button>').join("");
+    r.innerHTML='<div class="rail-hd">'+esc(edName(EDITION))+'</div>'+vs.map((s,i)=>
+      '<button class="tab" data-sec="'+s.id+'" style="--c:'+COLORS[doc.sections.indexOf(s)%COLORS.length]+'">'+
+      '<span class="lb">'+esc(secTitle(s,i))+'</span>'+
+      '<span class="pg">'+visFiles(s).length+' 份</span></button>').join("");
     return;
   }
   const s=secById(activeSec);
   if(!s){ activeSec=null; return renderRail(); }
   const c=secColor(s);
+  const vf=visFiles(s);
   let body="";
-  if(s.files.length){
+  if(vf.length){
     let lastGroup=null, occ=0, insideFold=false;
-    s.files.forEach(f=>{
+    vf.forEach(f=>{
       const g=f.group||"";
       if(g!==lastGroup){
         lastGroup=g;
@@ -566,7 +622,7 @@ function renderRail(){
     body='<div class="rail-none">這一章還沒有檔案</div>';
   }
   r.innerHTML='<button class="back" id="railBack">← 全部章節</button>'+
-    '<div class="here">'+esc(s.title)+"</div>"+body;
+    '<div class="here">'+esc(secTitle(s,vs.indexOf(s)))+"</div>"+body;
 }
 
 $("#rail").addEventListener("click",e=>{
@@ -593,6 +649,8 @@ $("#rail").addEventListener("click",e=>{
   }
 });
 function openSection(id){
+  const s=secById(id);
+  if(!s||!edOn(s,EDITION)) return;
   activeSec=id; renderRail(); renderView();
   window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -630,44 +688,52 @@ async function renderView(){
   $("#hdTitle").textContent=doc.title||"活動專卷";
   $("#hdSub").textContent=doc.subtitle||"";
   document.title=(doc.title||"活動專卷");
-  paintStamp(); measureTop(); renderRail();
+  paintStamp(); paintEdition(); measureTop(); renderRail();
   const pane=$("#viewPane");
 
   if(!doc.sections.length){
     pane.innerHTML='<div class="empty"><b>專卷還是空的</b>先到後台建立章節、上傳 PDF。</div>';
     return;
   }
+  const vs=visSections();
+  if(!vs.length){
+    pane.innerHTML='<div class="empty"><b>這個版本沒有內容</b>到後台把要給「'+esc(edName(EDITION))+'」看的章節勾起來。</div>';
+    return;
+  }
+  if(activeSec&&!vs.some(x=>x.id===activeSec)) activeSec=null;
   if(!activeSec){   // 章節總覽
+    const nf=vs.reduce((a,x)=>a+visFiles(x).length,0);
     pane.innerHTML='<div class="cover"><h1>'+esc(doc.title||"活動專卷")+"</h1>"+
-      '<p class="lead">'+(doc.subtitle?esc(doc.subtitle)+"　·　":"")+
-      "共 "+doc.sections.length+" 個章節、"+allFiles().length+" 份文件</p>"+
-      '<div class="folders">'+doc.sections.map((s,i)=>{
-        const sz=s.files.reduce((a,f)=>a+(f.size||0),0);
-        return '<button class="folder" data-sec="'+s.id+'" style="--c:'+COLORS[i%COLORS.length]+'">'+
-               "<b>"+esc(s.title)+"</b><span>"+s.files.length+" 份 · "+kb(sz)+"</span></button>";
+      '<p class="lead">'+esc(edName(EDITION))+"　·　"+(doc.subtitle?esc(doc.subtitle)+"　·　":"")+
+      "共 "+vs.length+" 個章節、"+nf+" 份文件</p>"+
+      '<div class="folders">'+vs.map((s,i)=>{
+        const fs=visFiles(s), sz=fs.reduce((a,f)=>a+(f.size||0),0);
+        return '<button class="folder" data-sec="'+s.id+'" style="--c:'+COLORS[doc.sections.indexOf(s)%COLORS.length]+'">'+
+               "<b>"+esc(secTitle(s,i))+"</b><span>"+fs.length+" 份 · "+kb(sz)+"</span></button>";
       }).join("")+"</div></div>";
     pane.querySelectorAll("[data-sec]").forEach(b=>b.onclick=()=>openSection(b.dataset.sec));
     return;
   }
 
   const s=secById(activeSec), c=secColor(s);
-  pane.innerHTML='<div class="sec-bar"><h2>'+esc(s.title)+"</h2>"+
+  const vf=visFiles(s);
+  pane.innerHTML='<div class="sec-bar"><h2>'+esc(secTitle(s,vs.indexOf(s)))+"</h2>"+
     '<button class="btn" id="btnSecPdf">下載本章</button></div>'+
     '<p class="lead" style="margin:0 0 14px;color:var(--ink-3);font-size:13px">'+
-    s.files.length+" 份文件</p>"+
-    (s.files.length?'<div class="loading">載入中…</div>':'<div class="empty">這一章還沒有檔案</div>');
+    vf.length+" 份文件</p>"+
+    (vf.length?'<div class="loading">載入中…</div>':'<div class="empty">這一章在這個版本沒有可顯示的檔案</div>');
   $("#btnSecPdf")?.addEventListener("click",()=>mergePdf(s));
-  if(!s.files.length) return;
+  if(!vf.length) return;
 
   let html="";
   let lastGroup=null;
-  s.files.forEach((f,i)=>{
+  vf.forEach((f,i)=>{
     const g=f.group||"";
     if(g!==lastGroup){
       lastGroup=g;
       if(g) html+='<div class="grp-hd" style="--c:'+c+'"><span class="ic">📁</span>'+esc(g)+"</div>";
     }
-    html+='<div class="file-cap" id="cap-'+f.id+'" style="--c:'+c+'"><span class="fnum">'+(i+1)+"/"+s.files.length+"</span><b>"+
+    html+='<div class="file-cap" id="cap-'+f.id+'" style="--c:'+c+'"><span class="fnum">'+(i+1)+"/"+vf.length+"</span><b>"+
           (f.num?esc(f.num)+"　":"")+esc(f.label||f.name)+"</b><i>"+kb(f.size)+
           (f.kind==="pdf"?"　共 "+f.pages+" 頁":"")+"</i></div>";
     if(f.kind==="pdf") html+='<div class="pages" data-pdf="'+f.id+'"></div>';
@@ -681,7 +747,7 @@ async function renderView(){
   pane.insertAdjacentHTML("beforeend",html);
   updateActiveTab();
 
-  for(const f of s.files){
+  for(const f of vf){
     if(f.kind==="pdf"){
       const box=pane.querySelector('[data-pdf="'+f.id+'"]'); if(!box) continue;
       try{
@@ -760,7 +826,8 @@ function saveBlob(blob,name){
   setTimeout(()=>URL.revokeObjectURL(a.href),4000);
 }
 async function mergePdf(section){
-  const files=(section?section.files:allFiles()).filter(f=>f.kind==="pdf"||f.kind==="image");
+  const files=(section?visFiles(section):visSections().flatMap(visFiles))
+                .filter(f=>f.kind==="pdf"||f.kind==="image");
   if(!files.length) return toast("沒有可以合併的內容");
   const btn=section?$("#btnSecPdf"):$("#btnMerge");
   const label=btn.textContent; btn.disabled=true; btn.textContent="整理中…";
@@ -787,7 +854,7 @@ async function mergePdf(section){
       const pg=out.getPage(0),size=9;
       pg.drawText(mark,{x:pg.getWidth()-font.widthOfTextAtSize(mark,size)-18,y:14,size,font,color:rgb(.55,.57,.6)});
     }catch(e){}
-    const nm=((section?doc.title+"_"+section.title:doc.title)||"專卷").replace(/[\\/:*?"<>|]/g,"");
+    const nm=((section?doc.title+"_"+stripNum(section.title):doc.title+"_"+edName(EDITION))||"專卷").replace(/[\\/:*?"<>|]/g,"");
     saveBlob(new Blob([await out.save()],{type:"application/pdf"}),nm+".pdf");
     toast(skipped?"已下載，"+skipped+" 個檔案略過":"已下載 PDF");
   }catch(err){toast("合併失敗："+err.message)}
@@ -807,14 +874,16 @@ addEventListener("resize",measureTop);
 function renderAdmin(){
   $("#adminPane").innerHTML=`
     <div class="panel">
-      <h3>兩組網址</h3>
-      <p class="sub">給長官的是上面那條，畫面上不會有後台按鈕。</p>
+      <h3>網址</h3>
+      <p class="sub">兩條給長官的網址內容不同，但都是同一份資料。畫面上都不會有後台按鈕。</p>
+      ${EDITIONS.map(e=>`
       <div class="frow" style="border:1px solid var(--rule);border-radius:9px;margin-bottom:8px;padding-left:11px">
-        <span class="tag">閱讀</span><span class="fn" id="uView"></span>
-        <button class="btn" data-copy="view">複製</button>
-      </div>
+        <span class="tag ${e.k==="gurus"?"img":"pdf"}">${esc(e.n)}</span>
+        <span class="fn" data-url="${e.k}">${esc(edUrl(e.k))}</span>
+        <button class="btn" data-copy="${e.k}">複製</button>
+      </div>`).join("")}
       <div class="frow" style="border:1px solid var(--rule);border-radius:9px;padding-left:11px">
-        <span class="tag pdf">管理</span><span class="fn" id="uAdmin"></span>
+        <span class="tag">管理</span><span class="fn" id="uAdmin"></span>
         <button class="btn" data-copy="admin">複製</button>
       </div>
       <div class="note">前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
@@ -826,6 +895,10 @@ function renderAdmin(){
         <label class="field"><span>標題</span><input id="fTitle" value="${esc(doc.title)}"></label>
         <label class="field"><span>副標</span><input id="fSub" value="${esc(doc.subtitle)}"></label>
       </div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)">
+        <input type="checkbox" id="fAutoNum" ${doc.autoNumber===false?"":"checked"} style="width:auto">
+        章節自動編號：每個版本各自從 01 開始重排（關掉就照你自己打的名稱顯示）
+      </label>
     </div>
 
     <div class="panel">
@@ -846,7 +919,13 @@ function renderAdmin(){
 
     <div class="panel">
       <h3>章節與檔案</h3>
-      <p class="sub">章節順序＝左側標籤順序。每份檔案可以自己取顯示名稱，還可以指定點下去要跳到第幾頁。</p>
+      <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。</p>
+      <div class="edview">
+        <span>只看</span>
+        <button data-edv="all" class="${EDVIEW==="all"?"on":""}">全部</button>
+        ${EDITIONS.map(e=>`<button data-edv="${e.k}" class="${EDVIEW===e.k?"on":""}">${esc(e.n)}</button>`).join("")}
+        <span class="grow" style="flex:1"></span>
+      </div>
       <div class="list" id="secList"></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="addSec">新增章節</button>
@@ -855,13 +934,14 @@ function renderAdmin(){
       </div>
     </div>`;
 
-  $("#uView").textContent=viewUrl(); $("#uAdmin").textContent=adminUrl();
+  $("#uAdmin").textContent=adminUrl();
   $("#adminPane").querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
-    const u=b.dataset.copy==="admin"?adminUrl():viewUrl();
+    const u=b.dataset.copy==="admin"?adminUrl():edUrl(b.dataset.copy);
     try{await navigator.clipboard.writeText(u);toast("已複製網址")}catch(e){prompt("手動複製：",u)}
   });
   $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
-  $("#fSub").oninput=e=>{doc.subtitle=e.target.value;$("#hdSub").textContent=e.target.value;save()};
+  $("#fSub").oninput=e=>{doc.subtitle=e.target.value;save()};
+  $("#fAutoNum").onchange=e=>{doc.autoNumber=e.target.checked;save();renderAdmin()};
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
@@ -876,9 +956,31 @@ function renderAdmin(){
     for(const f of allFiles()) await Store.delBlob(f);
     doc=blankDoc();activeSec=null;pdfCache.clear();
     await save();renderAdmin();renderView();toast("已清空")};
+  $("#adminPane").querySelectorAll("[data-edv]").forEach(b=>b.onclick=()=>{
+    EDVIEW=b.dataset.edv; renderAdmin();
+  });
   bindDrop(); renderSecList();
 }
 
+const edVal=(o,k)=>edOn(o,k);
+let EDVIEW="all";   // 後台「只看」篩選，不影響前台
+function edClass(o){
+  const on=EDK.filter(k=>edVal(o,k));
+  if(!on.length) return "ed-none";
+  if(on.length===EDK.length) return "";
+  return "only-"+on[0];
+}
+function edBadge(o){
+  const on=EDK.filter(k=>edVal(o,k));
+  if(!on.length) return {t:"都不顯示",c:"no"};
+  if(on.length===EDK.length) return {t:"兩版都給",c:"no"};
+  return {t:"僅 "+edName(on[0]), c:on[0]==="gurus"?"gu":"in"};
+}
+function edToggle(o,k){
+  o.eds=o.eds||{};
+  o.eds[k]=!edVal(o,k);
+  EDK.forEach(x=>{ if(o.eds[x]===undefined) o.eds[x]=true; });
+}
 const move=(arr,from,to)=>{if(to<0||to>=arr.length)return;arr.splice(to,0,arr.splice(from,1)[0])};
 
 function renderSecList(){
@@ -890,7 +992,9 @@ function renderSecList(){
       <div class="sec-hd">
         <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
         <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
-        <span class="cnt">${s.files.length} 份</span>
+        <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(s.files||[]).filter(f=>edVal(f,e.k)).length).join("　")}</span>
+        <span class="edt">${EDITIONS.map(e=>`<button data-sed="${s.id}" data-k="${e.k}" class="${edVal(s,e.k)?"on":"off"}" title="這一章要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+        <span class="mini">${EDITIONS.map(e=>`<button data-sonly="${s.id}" data-k="${e.k}" title="把這一章的檔案全部設成只給${esc(e.n)}">全給${esc(e.n)}</button>`).join("")}<button data-sboth="${s.id}" title="這一章的檔案全部兩版都顯示">全給兩版</button></span>
         <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
         <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
         <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
@@ -906,18 +1010,25 @@ function renderSecList(){
         <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
       </div>
       ${s.files.length? s.files.map((f,fi)=>`
-        <div class="frow">
-          <span class="tag ${f.kind==="pdf"?"pdf":f.kind==="image"?"img":""}">${f.num||(f.kind==="pdf"?"PDF":"檔")}</span>
-          <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
-          <select class="g" data-fgroupsel="${f.id}" aria-label="子資料夾">
-            <option value="">（不指定資料夾）</option>
-            ${s.folders.map(g=>`<option value="${esc(g.title)}" ${f.group===g.title?"selected":""}>${esc(g.title)}</option>`).join("")}
-          </select>
-          <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁" title="點標籤時跳到第幾頁">
-          <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
-          <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
-          <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
-          <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
+        <div class="fitem ${edClass(f)} ${EDVIEW!=="all"&&!edVal(f,EDVIEW)?"muted":""}">
+          <div class="fr1">
+            <span class="tag ${f.kind==="pdf"?"pdf":f.kind==="image"?"img":""}">${f.num||(f.kind==="pdf"?"PDF":"檔")}</span>
+            <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
+            <span class="edt">${EDITIONS.map(e=>`<button data-fed="${f.id}" data-k="${e.k}" class="${edVal(f,e.k)?"on":"off"}" title="這一份要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+            <span class="only ${edBadge(f).c}">${esc(edBadge(f).t)}</span>
+            <span class="grow"></span>
+            <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
+            <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
+            <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
+          </div>
+          <div class="fr2">
+            <select class="g" data-fgroupsel="${f.id}" aria-label="子資料夾">
+              <option value="">（不指定資料夾）</option>
+              ${s.folders.map(g=>`<option value="${esc(g.title)}" ${f.group===g.title?"selected":""}>${esc(g.title)}</option>`).join("")}
+            </select>
+            <label>跳到第 <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁"> 頁</label>
+            <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
+          </div>
         </div>`).join("") : '<div class="lnone">這一章還沒有檔案</div>'}
     </div>`).join("");
 
@@ -938,6 +1049,18 @@ function renderSecList(){
 
   box.onclick=async e=>{
     const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+    if(d.sed){ edToggle(secById(d.sed),d.k); await save(); renderAdmin(); return; }
+    if(d.fed){ edToggle(fileById(d.fed),d.k); await save(); renderAdmin(); return; }
+    if(d.sonly){
+      const sec=secById(d.sonly);
+      sec.files.forEach(f=>{f.eds={};EDK.forEach(x=>f.eds[x]=(x===d.k))});
+      await save(); renderAdmin(); toast("這一章的檔案都設成只給"+edName(d.k)); return;
+    }
+    if(d.sboth){
+      const sec=secById(d.sboth);
+      sec.files.forEach(f=>{f.eds={};EDK.forEach(x=>f.eds[x]=true)});
+      await save(); renderAdmin(); toast("這一章的檔案都改成兩版都顯示"); return;
+    }
     const secOf=fid=>doc.sections.find(s=>s.files.some(f=>f.id===fid));
     if(d.sup||d.sdn){
       const id=d.sup||d.sdn,i=doc.sections.findIndex(s=>s.id===id);
@@ -1078,7 +1201,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V25");
+  dg("版本","","V27");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -1116,7 +1239,11 @@ $("#verBadge").onclick=()=>{
     }
     if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
-    dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份 / 更新於 "+stampFmt(doc.updated));
+    EDITION=curEdition();
+    dg("前台版本","", edName(EDITION)+"（?v="+EDITION+"）");
+    dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份（本版可見 "
+       +visSections().length+" 章 / "+visSections().reduce((a,x)=>a+visFiles(x).length,0)+" 份）"
+       +" / 更新於 "+stampFmt(doc.updated));
     dg("允許名單","", ADMIN_EMAIL||"未限定（由資料庫規則把關）");
     if(isAdminUrl()) $("#segMode").style.display="";
     measureTop();
