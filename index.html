@@ -79,8 +79,10 @@ button{cursor:pointer;border:0;background:none}
 .tab.sub{width:calc(100% - 18px)}
 
 /* ---------- main ---------- */
-.main{margin-left:var(--rail);padding:20px 24px 140px;max-width:1120px}
-.main.admin{max-width:940px;margin-left:0}
+.main{margin-left:var(--rail);padding:20px 24px 140px}
+.main.admin{margin-left:0}
+#viewPane{max-width:1120px;margin:0 auto}
+#adminPane{max-width:1000px;margin:0 auto}
 
 /* 章節總覽 */
 .cover h1{margin:6px 0 4px;font-size:27px;font-weight:650;letter-spacing:.01em}
@@ -174,12 +176,12 @@ button{cursor:pointer;border:0;background:none}
 .edview button{border:1px solid var(--rule);background:#fff;border-radius:7px;padding:4px 11px;
   font-size:12.5px;color:var(--ink-2)}
 .edview button.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
-.fitem{padding:9px 12px 9px 14px;border-top:1px solid #F1EFE9;border-left:5px solid #E8E6DF;
+.fitem{padding:9px 12px 9px 14px;border-top:1px solid #F1EFE9;border-left:6px solid #E4E2DA;
   transition:opacity .12s,background .12s}
-.fitem.only-in{border-left-color:var(--steel);background:#EFF6FB}
-.fitem.only-gurus{border-left-color:var(--gold);background:#FCF6E9}
+.fitem.only-in{border-left-color:#15527F;background:#DDEBF7}
+.fitem.only-gurus{border-left-color:#9A6A22;background:#F9EED4}
 .fitem.ed-none{border-left-color:#C9C6BE;background:#F6F5F2;opacity:.6}
-.fitem.muted{opacity:.32}
+.fitem.muted{opacity:.38}
 .fr1{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .fr1 input.t{flex:1 1 150px;min-width:120px;max-width:250px}
 .only{flex:0 0 auto;min-width:74px;text-align:center}
@@ -187,8 +189,8 @@ button{cursor:pointer;border:0;background:none}
 .fr2 label{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .fitem .grow{flex:1;min-width:8px}
 .only{font-size:11px;font-weight:600;border-radius:999px;padding:1px 9px;white-space:nowrap}
-.only.in{color:var(--steel);background:var(--steel-soft);border:1px solid #C9DCEA}
-.only.gu{color:var(--gold);background:#FBF6EA;border:1px solid #E6D8BC}
+.only.in{color:#0E3F63;background:#C9E0F2;border:1px solid #8FBAD9;font-weight:700}
+.only.gu{color:#6B4A11;background:#F4E3BC;border:1px solid #D3BC87;font-weight:700}
 .only.no{color:var(--ink-3);background:#EFEDE7;border:1px solid var(--rule)}
 .sec-hd{display:block;padding:10px 11px}
 .sh1{display:flex;align-items:center;gap:8px}
@@ -270,7 +272,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V28</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V29</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -325,7 +327,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V28
+   活動專卷 V29
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -919,7 +921,7 @@ function renderAdmin(){
       </label>
       <div class="drop" id="drop">
         <b>把檔案拖進來，或點一下選檔</b>
-        <p>PDF 和圖片會直接排進閱讀頁，其他格式放成附件。</p>
+        <p>PDF 和圖片會直接排進閱讀頁，其他格式放成附件。<br>新上傳的檔案預設兩個版本都會顯示，之後再把不給看的關掉就好。</p>
         <input type="file" id="fInput" multiple hidden>
       </div>
       <div class="bar" id="upBar"><i></i></div>
@@ -932,9 +934,9 @@ function renderAdmin(){
       <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。</p>
       <div class="edview">
         <span>只看</span>
-        <button data-edv="all" class="${EDVIEW==="all"?"on":""}">全部</button>
         ${EDITIONS.map(e=>`<button data-edv="${e.k}" class="${EDVIEW===e.k?"on":""}">${esc(e.n)}</button>`).join("")}
-        <span class="grow" style="flex:1"></span>
+        <span style="flex:1"></span>
+        <span style="font-size:12px">淡掉的那幾列＝這一版看不到</span>
       </div>
       <div class="list" id="secList"></div>
       <div class="row" style="margin-top:12px">
@@ -975,7 +977,7 @@ function renderAdmin(){
 }
 
 const edVal=(o,k)=>edOn(o,k);
-let EDVIEW="all";   // 後台「只看」篩選，不影響前台
+let EDVIEW=EDK[0];  // 後台「只看」預覽，不影響前台
 function edClass(o){
   const on=EDK.filter(k=>edVal(o,k));
   if(!on.length) return "ed-none";
@@ -1158,7 +1160,8 @@ async function handleFiles(files){
       }
       await Store.putBlob(id,file,pct=>{fill.style.width=((n+pct)/files.length*100)+"%"});
       const p=parseName(file.name);
-      s.files.push({id,name:file.name,label:p.label,num:p.num,kind,size:file.size,pages,jump:1});
+      const eds={}; EDK.forEach(k=>eds[k]=true);   // 新上傳預設兩版都顯示，之後再關掉不要的
+      s.files.push({id,name:file.name,label:p.label,num:p.num,kind,size:file.size,pages,jump:1,eds});
       ok++;
     }catch(err){errs.push(file.name+"："+err.message)}
     fill.style.width=(++n/files.length*100)+"%";
@@ -1231,7 +1234,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V28");
+  dg("版本","","V29");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
