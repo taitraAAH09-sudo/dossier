@@ -180,7 +180,9 @@ button{cursor:pointer;border:0;background:none}
 .fitem.only-gurus{border-left-color:var(--gold);background:#FCF6E9}
 .fitem.ed-none{border-left-color:#C9C6BE;background:#F6F5F2;opacity:.6}
 .fitem.muted{opacity:.32}
-.fr1{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.fr1{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.fr1 input.t{flex:1 1 150px;min-width:120px;max-width:250px}
+.only{flex:0 0 auto;min-width:74px;text-align:center}
 .fr2{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:6px;font-size:12px;color:var(--ink-3)}
 .fr2 label{display:flex;align-items:center;gap:5px;white-space:nowrap}
 .fitem .grow{flex:1;min-width:8px}
@@ -188,16 +190,23 @@ button{cursor:pointer;border:0;background:none}
 .only.in{color:var(--steel);background:var(--steel-soft);border:1px solid #C9DCEA}
 .only.gu{color:var(--gold);background:#FBF6EA;border:1px solid #E6D8BC}
 .only.no{color:var(--ink-3);background:#EFEDE7;border:1px solid var(--rule)}
+.sec-hd{display:block;padding:10px 11px}
+.sh1{display:flex;align-items:center;gap:8px}
+.sh2{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;font-size:12px;color:var(--ink-3)}
+.sh2 .lbl{flex:0 0 auto}
+.secwarn{display:block;margin-top:7px;font-size:12px;color:#8A5A22;background:#FCF4E4;
+  border:1px solid #EADFC6;border-radius:7px;padding:6px 10px}
 .sec-hd .mini{display:flex;gap:4px;flex:0 0 auto}
 .sec-hd .mini button{font-size:10.5px;padding:2px 7px;border:1px solid var(--rule);border-radius:5px;
   background:#fff;color:var(--ink-3);white-space:nowrap}
 .sec-hd .mini button:hover{background:#EFEDE7;color:var(--ink)}
-.edt{display:flex;gap:3px;flex:0 0 auto}
-.edt button{font-size:10.5px;line-height:1.5;padding:1px 7px;border:1px solid var(--rule);
-  border-radius:5px;color:var(--ink-3);background:#fff;white-space:nowrap}
-.edt button.on{background:var(--steel);border-color:var(--steel);color:#fff;font-weight:600}
-.edt button.on[data-k="gurus"]{background:var(--gold);border-color:var(--gold)}
-.edt button.off{text-decoration:line-through;opacity:.55}
+.edt{display:flex;gap:0;flex:0 0 auto;border:1px solid var(--rule);border-radius:7px;overflow:hidden;background:#fff}
+.edt button{font-size:11px;line-height:1.6;padding:2px 0;width:62px;text-align:center;border:0;
+  border-right:1px solid var(--rule);color:#B7B3AA;background:#fff;white-space:nowrap}
+.edt button:last-child{border-right:0}
+.edt button.on{background:var(--steel);color:#fff;font-weight:600}
+.edt button.on[data-k="gurus"]{background:var(--gold)}
+.edt button.off{text-decoration:line-through}
 .ic-btn{width:29px;height:29px;border-radius:6px;color:var(--ink-3);display:grid;place-items:center;font-size:15px;flex:0 0 29px}
 .ic-btn:hover{background:#EAE8E2;color:var(--ink)}
 .ic-btn:disabled{opacity:.28;cursor:default}
@@ -261,7 +270,7 @@ button{cursor:pointer;border:0;background:none}
 <header class="top" id="topBar">
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
-    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V27</span>
+    <span class="ver" id="verBadge" title="連點五下可叫出後台入口">V28</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -316,7 +325,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V27
+   活動專卷 V28
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -881,12 +890,13 @@ function renderAdmin(){
         <span class="tag ${e.k==="gurus"?"img":"pdf"}">${esc(e.n)}</span>
         <span class="fn" data-url="${e.k}">${esc(edUrl(e.k))}</span>
         <button class="btn" data-copy="${e.k}">複製</button>
+        <button class="btn" data-open="${e.k}">開來看</button>
       </div>`).join("")}
       <div class="frow" style="border:1px solid var(--rule);border-radius:9px;padding-left:11px">
         <span class="tag">管理</span><span class="fn" id="uAdmin"></span>
         <button class="btn" data-copy="admin">複製</button>
       </div>
-      <div class="note">前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
+      <div class="note">改完後台之後，已經開著的前台分頁要重新整理才會變。<br>前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
     </div>
 
     <div class="panel">
@@ -935,6 +945,8 @@ function renderAdmin(){
     </div>`;
 
   $("#uAdmin").textContent=adminUrl();
+  $("#adminPane").querySelectorAll("[data-open]").forEach(b=>b.onclick=()=>
+    window.open(edUrl(b.dataset.open),"_blank"));
   $("#adminPane").querySelectorAll("[data-copy]").forEach(b=>b.onclick=async()=>{
     const u=b.dataset.copy==="admin"?adminUrl():edUrl(b.dataset.copy);
     try{await navigator.clipboard.writeText(u);toast("已複製網址")}catch(e){prompt("手動複製：",u)}
@@ -970,6 +982,12 @@ function edClass(o){
   if(on.length===EDK.length) return "";
   return "only-"+on[0];
 }
+function secWarn(s){
+  const bad=EDITIONS.filter(e=>!edVal(s,e.k)&&(s.files||[]).some(f=>edVal(f,e.k)));
+  if(!bad.length) return "";
+  return '<span class="secwarn">⚠ 整章在 '+bad.map(e=>esc(e.n)).join("、")+
+    ' 被關掉，所以底下標成這些版本的檔案在前台一份都不會出現。要放行請把上面那排打開。</span>';
+}
 function edBadge(o){
   const on=EDK.filter(k=>edVal(o,k));
   if(!on.length) return {t:"都不顯示",c:"no"};
@@ -990,15 +1008,22 @@ function renderSecList(){
   box.innerHTML=doc.sections.map((s,si)=>`
     <div class="sec-block">
       <div class="sec-hd">
-        <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
-        <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
-        <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(s.files||[]).filter(f=>edVal(f,e.k)).length).join("　")}</span>
-        <span class="edt">${EDITIONS.map(e=>`<button data-sed="${s.id}" data-k="${e.k}" class="${edVal(s,e.k)?"on":"off"}" title="這一章要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
-        <span class="mini">${EDITIONS.map(e=>`<button data-sonly="${s.id}" data-k="${e.k}" title="把這一章的檔案全部設成只給${esc(e.n)}">全給${esc(e.n)}</button>`).join("")}<button data-sboth="${s.id}" title="這一章的檔案全部兩版都顯示">全給兩版</button></span>
-        <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
-        <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
-        <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
-        <button class="ic-btn" data-sdel="${s.id}" title="刪除章節">✕</button>
+        <div class="sh1">
+          <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
+          <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
+          <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(edVal(s,e.k)?(s.files||[]).filter(f=>edVal(f,e.k)).length:0)).join("　")}</span>
+          <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
+          <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
+          <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
+          <button class="ic-btn" data-sdel="${s.id}" title="刪除章節">✕</button>
+        </div>
+        <div class="sh2">
+          <span class="lbl">整章出現在</span>
+          <span class="edt">${EDITIONS.map(e=>`<button data-sed="${s.id}" data-k="${e.k}" class="${edVal(s,e.k)?"on":"off"}" title="整章要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+          <span class="lbl" style="margin-left:10px">底下檔案批次</span>
+          <span class="mini">${EDITIONS.map(e=>`<button data-sonly="${s.id}" data-k="${e.k}" title="把這一章的檔案全部設成只給${esc(e.n)}">全給${esc(e.n)}</button>`).join("")}<button data-sboth="${s.id}" title="這一章的檔案全部兩版都顯示">全給兩版</button></span>
+        </div>
+        ${secWarn(s)}
       </div>
       <div class="folder-row">
         <span class="flabel">📁 這一章的資料夾：</span>
@@ -1049,7 +1074,12 @@ function renderSecList(){
 
   box.onclick=async e=>{
     const b=e.target.closest("button");if(!b)return;const d=b.dataset;
-    if(d.sed){ edToggle(secById(d.sed),d.k); await save(); renderAdmin(); return; }
+    if(d.sed){
+      const sec=secById(d.sed); edToggle(sec,d.k); await save(); renderAdmin();
+      toast(edVal(sec,d.k) ? "「"+sec.title+"」會出現在"+edName(d.k)
+            : "「"+sec.title+"」整章不出現在"+edName(d.k)+"，底下檔案也一起消失", 3400);
+      return;
+    }
     if(d.fed){ edToggle(fileById(d.fed),d.k); await save(); renderAdmin(); return; }
     if(d.sonly){
       const sec=secById(d.sonly);
@@ -1201,7 +1231,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V27");
+  dg("版本","","V28");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
