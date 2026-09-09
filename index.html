@@ -200,6 +200,10 @@ button{cursor:pointer;border:0;background:none}
 .fitem.muted{opacity:.38}
 .fr1{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .fr1 input.t{flex:1 1 150px;min-width:120px;max-width:250px}
+.edt.tiny button{width:46px;font-size:10px;padding:1px 0}
+.chip.only-in{background:#DDEBF7;border-color:#8FBAD9}
+.chip.only-gurus{background:#F4E3BC;border-color:#D3BC87}
+.chip.ed-none{background:#EFEDE7;opacity:.65}
 .numi{width:62px;flex:0 0 62px;border:1px solid #C9DCEA;border-radius:6px;padding:3px 5px;
   font-size:12px;font-weight:700;text-align:center;color:#0E3F63;background:#E8F1F9}
 .numi::placeholder{color:#9DB4C6;font-weight:600}
@@ -298,7 +302,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V35</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V36</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -353,7 +357,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V35
+   活動專卷 V36
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -404,7 +408,12 @@ const edName=k=>(EDITIONS.find(e=>e.k===k)||EDITIONS[0]).n;
 /* 沒設定過的一律視為兩版都顯示，舊資料不會因為升版就消失 */
 const edOn=(o,k)=>!(o&&o.eds)||o.eds[k]!==false;
 const visSections=()=>doc.sections.filter(s=>edOn(s,EDITION));
-const visFiles=s=>(s.files||[]).filter(f=>edOn(f,EDITION));
+const folderOf=(s,f)=>(s.folders||[]).find(g=>g.title===((f.group||"").trim()));
+const visFiles=s=>(s.files||[]).filter(f=>{
+  if(!edOn(f,EDITION)) return false;
+  const g=folderOf(s,f);
+  return !g||edOn(g,EDITION);        // 資料夾關掉，裡面的檔案一起隱藏
+});
 const stripNum=t=>String(t||"").replace(/^\s*\d+\s*[.、．\-_)]*\s*/,"");
 const secTitle=(s,i)=>doc.autoNumber===false?s.title
   :String(i+1).padStart(2,"0")+". "+stripNum(s.title);
@@ -998,7 +1007,7 @@ function renderAdmin(){
 
     <div class="panel">
       <h3>章節與檔案</h3>
-      <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。<br>最左邊的編號預設抓檔名，可以直接改成你要的，留白就不顯示。</p>
+      <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。<br>最左邊的編號預設抓檔名，可以直接改成你要的，留白就不顯示。<br>資料夾晶片上也有版本開關，關掉整個資料夾，裡面的檔案跟著隱藏。</p>
       <div class="edview">
         <span>只看</span>
         ${EDITIONS.map(e=>`<button data-edv="${e.k}" class="${EDVIEW===e.k?"on":""}">${esc(e.n)}</button>`).join("")}
@@ -1058,11 +1067,14 @@ function secWarn(s){
   else if(on.length<EDITIONS.length)
     out.push('<span class="secnote">這一章只會出現在 <b>'+on.map(e=>esc(e.n)).join("、")+'</b>，底下的檔案跟著整章一起隱藏。</span>');
   /* 真正要提醒的：某份檔案在任何版本都看不到 */
-  const dead=(s.files||[]).filter(f=>EDK.every(k=>!(edVal(s,k)&&edVal(f,k))));
+  const dead=(s.files||[]).filter(f=>{
+    const g=folderOf(s,f);
+    return EDK.every(k=>!(edVal(s,k)&&edVal(f,k)&&(!g||edVal(g,k))));
+  });
   if(dead.length&&on.length)
     out.push('<span class="secwarn">⚠ 有 '+dead.length+' 份檔案兩個版本都看不到：'+
       dead.slice(0,3).map(f=>esc(f.label||f.name)).join("、")+(dead.length>3?" 等":"")+
-      '。通常是檔案被設成「僅某一版」，而整章剛好把那一版關掉了。</span>');
+      '。通常是檔案、它所在的資料夾、或整章其中一層把那一版關掉了。</span>');
   return out.join("");
 }
 function edBadge(o){
@@ -1088,7 +1100,7 @@ function renderSecList(){
         <div class="sh1">
           <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
           <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
-          <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(edVal(s,e.k)?(s.files||[]).filter(f=>edVal(f,e.k)).length:0)).join("　")}</span>
+          <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(edVal(s,e.k)?(s.files||[]).filter(f=>{const g=folderOf(s,f);return edVal(f,e.k)&&(!g||edVal(g,e.k))}).length:0)).join("　")}</span>
           <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
           <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
           <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
@@ -1105,8 +1117,9 @@ function renderSecList(){
       <div class="folder-row">
         <span class="flabel">📁 這一章的資料夾：</span>
         ${s.folders.map(g=>`
-          <span class="chip">
+          <span class="chip ${edClass(g)}">
             <input value="${esc(g.title)}" data-gname="${g.id}" data-sid="${s.id}" aria-label="資料夾名稱">
+            <span class="edt tiny">${EDITIONS.map(e=>`<button data-ged="${g.id}" data-sid="${s.id}" data-k="${e.k}" class="${edVal(g,e.k)?"on":"off"}" title="這個資料夾要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
             <button class="ic-btn" data-gdel="${g.id}" data-sid="${s.id}" title="刪除資料夾">✕</button>
           </span>`).join("")}
         <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
@@ -1163,6 +1176,13 @@ function renderSecList(){
       return;
     }
     if(d.fed){ edToggle(fileById(d.fed),d.k); await save(); renderAdmin(); return; }
+    if(d.ged){
+      const sec=secById(d.sid), g=(sec.folders||[]).find(x=>x.id===d.ged);
+      if(g){ edToggle(g,d.k); await save(); renderAdmin();
+        toast(edVal(g,d.k)?"資料夾「"+g.title+"」會出現在"+edName(d.k)
+              :"資料夾「"+g.title+"」不出現在"+edName(d.k)+"，裡面的檔案一起隱藏",3400); }
+      return;
+    }
     if(d.sonly){
       const sec=secById(d.sonly);
       sec.files.forEach(f=>{f.eds={};EDK.forEach(x=>f.eds[x]=(x===d.k))});
@@ -1343,7 +1363,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V35");
+  dg("版本","","V36");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
