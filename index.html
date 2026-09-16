@@ -349,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V46</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V47</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V46
+   活動專卷 V47
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -942,34 +942,35 @@ function lbCount(){
   const fid=el?el.dataset.file:null;
   $("#lbRail").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.jump===fid));
 }
-function lbGo(i,smooth){
+async function lbGo(i,smooth){
   const el=lbPages[i]; if(!el) return;
-  /* 跳很遠（換章節、側欄點選、快速倒回好幾頁）時，平滑捲動一路上會一直被 snap 卡、
-     手機還會邊捲邊重畫沿路那些頁面造成lag，所以距離遠就直接瞬移過去，不要用smooth */
-  if(smooth&&Math.abs(i-lbCur)>2) smooth=false;
+  const jumpFar=Math.abs(i-lbCur)>2;
   lbCur=i;
+  /* 先把目的頁畫好，畫完才跳過去——不要先跳過去再等它自己補畫。
+     不然要跳去的位置高度還沒定案，位置抓不準，看起來就像卡住／跳不過去，
+     這個順序對不對，跟有沒有放大、有沒有snap完全無關 */
+  if(el.querySelector(".lb-ph")) await lbRender(el,true);
+  const nb=lbPages[i-1]; if(nb&&nb.querySelector(".lb-ph")) lbRender(nb,true);
+  if(!$("#lb").classList.contains("on")) return; // 這期間使用者關掉了放大視窗
   const hd=el.previousElementSibling&&el.previousElementSibling.classList.contains("lb-fhd")
            ?el.previousElementSibling:null;
   const body=lbBody();
-  /* 往上跳頁時，CSS 的 scroll-snap 會和下面這行的 smooth 捲動互搶，
-     在 Chrome 上常常卡在半路不動；跳頁前先暫時關掉 snap，捲完再開回來就不會卡住 */
-  const wasSnap=body.classList.contains("snap");
-  if(wasSnap) body.classList.remove("snap");
-  body.scrollTo({top:Math.max(0,(hd||el).offsetTop-10),behavior:smooth?"smooth":"auto"});
-  if(wasSnap){
-    clearTimeout(window.__lbSnapBack);
-    const restore=()=>{ if($("#lb").classList.contains("on")&&lbFit&&Math.abs(lbZoom-1)<.01) body.classList.add("snap"); };
-    if(smooth){
+  const target=Math.max(0,(hd||el).offsetTop-10);
+  if(smooth&&!jumpFar){
+    /* 只有近距離（上一頁/下一頁）才用平滑捲動；跳很遠一律直接瞬移，最穩，
+       也不會被 CSS scroll-snap 卡在半路 */
+    const wasSnap=body.classList.contains("snap");
+    if(wasSnap) body.classList.remove("snap");
+    body.scrollTo({top:target,behavior:"smooth"});
+    if(wasSnap){
+      clearTimeout(window.__lbSnapBack);
+      const restore=()=>{ if($("#lb").classList.contains("on")&&lbFit&&Math.abs(lbZoom-1)<.01) body.classList.add("snap"); };
       body.addEventListener("scrollend",restore,{once:true});
-      window.__lbSnapBack=setTimeout(restore,500); // scrollend 沒支援的瀏覽器用逾時保底
-    }else{
-      window.__lbSnapBack=setTimeout(restore,0);
+      window.__lbSnapBack=setTimeout(restore,500);
     }
+  }else{
+    body.scrollTop=target; // 不透過 scrollTo，直接瞬移，避免動畫／snap介入
   }
-  /* 不管有沒有snap、有沒有放大，跳過去的那一頁直接強制補畫，
-     不要靠 IntersectionObserver／延遲補畫去等它自己出現——這是往前跳常常「卡住看不到內容」的主因 */
-  if(el.querySelector(".lb-ph")) lbRender(el,true);
-  const nb=lbPages[i-1]; if(nb&&nb.querySelector(".lb-ph")) lbRender(nb,true);
   lbCount();
 }
 function lbJump(fid){
