@@ -349,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V47</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V48</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V47
+   活動專卷 V48
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -956,20 +956,23 @@ async function lbGo(i,smooth){
            ?el.previousElementSibling:null;
   const body=lbBody();
   const target=Math.max(0,(hd||el).offsetTop-10);
+  /* CSS scroll-snap 就算是直接指定 scrollTop（不是用 scrollTo 動畫）也還是會介入、
+     把位置修正回去，這就是「頁碼有變、畫面卻沒動」的真正原因，
+     所以不管平滑捲動還是瞬間跳，跳頁的當下都先把 snap 關掉 */
+  const wasSnap=body.classList.contains("snap");
+  if(wasSnap) body.classList.remove("snap");
+  const restore=()=>{ if($("#lb").classList.contains("on")&&lbFit&&Math.abs(lbZoom-1)<.01) body.classList.add("snap"); };
   if(smooth&&!jumpFar){
-    /* 只有近距離（上一頁/下一頁）才用平滑捲動；跳很遠一律直接瞬移，最穩，
-       也不會被 CSS scroll-snap 卡在半路 */
-    const wasSnap=body.classList.contains("snap");
-    if(wasSnap) body.classList.remove("snap");
+    /* 只有近距離（上一頁/下一頁）才用平滑捲動；跳很遠一律直接瞬移，最穩 */
     body.scrollTo({top:target,behavior:"smooth"});
     if(wasSnap){
       clearTimeout(window.__lbSnapBack);
-      const restore=()=>{ if($("#lb").classList.contains("on")&&lbFit&&Math.abs(lbZoom-1)<.01) body.classList.add("snap"); };
       body.addEventListener("scrollend",restore,{once:true});
       window.__lbSnapBack=setTimeout(restore,500);
     }
   }else{
     body.scrollTop=target; // 不透過 scrollTo，直接瞬移，避免動畫／snap介入
+    if(wasSnap){ clearTimeout(window.__lbSnapBack); window.__lbSnapBack=setTimeout(restore,50); }
   }
   lbCount();
 }
