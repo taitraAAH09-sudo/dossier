@@ -266,7 +266,7 @@ button{cursor:pointer;border:0;background:none}
 .lightbox.on{display:flex}
 .lb-bar{display:flex;align-items:center;gap:8px;padding:9px 12px;color:#DDE3E8;font-size:13px;
   border-bottom:1px solid #263038;flex-wrap:wrap}
-.lb-bar b{flex:1 1 180px;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lb-bar b{flex:1 1 160px;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-bar button{color:#DDE3E8;border:1px solid #384450;border-radius:7px;padding:5px 10px;font-size:13px;
   background:transparent;line-height:1.2}
 .lb-bar button:disabled{opacity:.35}
@@ -275,17 +275,33 @@ button{cursor:pointer;border:0;background:none}
 .lb-grp .lb-val{color:#DDE3E8;font-size:12.5px;min-width:56px;text-align:center;
   font-variant-numeric:tabular-nums;padding:0 2px}
 .lb-count{color:#9AA7B2;font-size:12.5px;min-width:62px;text-align:center;font-variant-numeric:tabular-nums}
+.lb-main{flex:1;display:flex;min-height:0;position:relative}
+.lb-rail{width:216px;flex:none;overflow:auto;background:#141A20;border-right:1px solid #263038;
+  padding:8px 8px 30px;-webkit-overflow-scrolling:touch}
+.lb-rail:not(.on){display:none}
+.lb-rail .rl-hd{color:#7E8B96;font-size:11.5px;padding:4px 9px 8px;letter-spacing:.04em}
+.lb-rail button{display:block;width:100%;text-align:left;background:transparent;border:0;color:#C3CDD6;
+  font-size:12.5px;line-height:1.35;padding:7px 9px;border-radius:7px;margin-bottom:2px}
+.lb-rail button.on{background:#22313F;color:#fff}
+.lb-rail button .n{display:block;color:#7E8B96;font-size:11px;margin-top:2px}
 .lb-body{flex:1;overflow:auto;position:relative;padding:10px 10px 44px;
   touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;cursor:grab}
 .lb-body.grab{cursor:grabbing}
 .lb-body.snap{scroll-snap-type:y proximity}
 .lb-stack{display:flex;flex-direction:column;align-items:center;gap:16px;min-width:min-content}
+.lb-fhd{width:100%;position:sticky;top:-10px;z-index:2;color:#DDE3E8;font-size:12.5px;
+  background:rgba(16,20,24,.92);border-left:3px solid #4C7EA8;padding:7px 10px;border-radius:0 6px 6px 0}
+.lb-fhd i{font-style:normal;color:#8895A1;margin-left:8px;font-size:11.5px}
 .lb-page{position:relative;background:#fff;border-radius:4px;overflow:hidden;flex:none;
   box-shadow:0 8px 22px rgba(0,0,0,.4);scroll-snap-align:center}
 .lb-page canvas,.lb-page img{display:block;height:auto}
 .lb-ph{background:#1A2026}
 .lb-n{position:absolute;right:8px;bottom:8px;background:rgba(16,20,24,.72);color:#DDE3E8;
   font-size:12px;padding:2px 9px;border-radius:20px;pointer-events:none}
+@media(max-width:760px){
+  .lb-rail{position:absolute;left:0;top:0;bottom:0;z-index:6;width:76%;max-width:280px;
+    box-shadow:0 0 0 100vw rgba(10,13,16,.5)}
+}
 .lb-load{color:#9AA7B2;font-size:13px;padding:40px 10px;text-align:center}
 .dg{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed #EFEDE6}
 .dg:last-child{border-bottom:0}
@@ -333,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V41</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V42</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -379,6 +395,7 @@ button{cursor:pointer;border:0;background:none}
 
 <div class="lightbox" id="lb">
   <div class="lb-bar">
+    <button id="lbMenu" title="這一章的檔案清單">☰</button>
     <b id="lbName"></b>
     <span class="lb-grp">
       <button id="lbPrev" title="上一頁（↑）">▲</button>
@@ -390,10 +407,13 @@ button{cursor:pointer;border:0;background:none}
       <button class="lb-val" id="lbPct" title="點一下回到 100%">100%</button>
       <button id="lbIn" title="放大（Alt＋滾輪 / 兩指）">＋</button>
     </span>
-    <button id="lbFit" title="切換：整頁（一頁一頁）／連續（整份接著看，可放大後上下左右拖曳）">連續</button>
+    <button id="lbFit" title="切換：整頁（一頁一頁）／連續（整章接著看，可放大後上下左右拖曳）">連續</button>
     <button id="lbClose">關閉</button>
   </div>
-  <div class="lb-body snap" id="lbBody"></div>
+  <div class="lb-main">
+    <aside class="lb-rail" id="lbRail"></aside>
+    <div class="lb-body snap" id="lbBody"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -402,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V41
+   活動專卷 V42
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -871,7 +891,7 @@ async function renderView(){
         box.innerHTML=frag;
         if(wide){
           const h=document.createElement("p");h.className="wide-hint";
-          h.textContent="橫式投影片：點右上角「放大」可全螢幕連續翻閱整份，還能縮放、拖曳。";
+          h.textContent="橫式投影片：點右上角「放大」可全螢幕連續翻閱整章，還能縮放、拖曳、跳到別份。";
           box.parentNode.insertBefore(h,box);
         }
         box.querySelectorAll(".page").forEach(p=>io.observe(p));
@@ -889,17 +909,17 @@ async function renderView(){
   }
 }
 
-/* ---------- 放大：整份連續翻閱＋縮放拖曳 ---------- */
-let lbFile=null, lbPages=[], lbCur=1, lbFit=true, lbZoom=1;
+/* ---------- 放大：整章連續翻閱＋縮放拖曳＋側邊檔案清單 ---------- */
+let lbPages=[], lbCur=0, lbFit=true, lbZoom=1, lbSecId=null;
 const LB_MIN=.25, LB_MAX=6;
 const lbBody=()=>$("#lbBody");
 const lbIO=new IntersectionObserver(es=>{
   es.forEach(e=>{ if(e.isIntersecting){ lbIO.unobserve(e.target); lbRender(e.target); } });
-},{root:document.getElementById("lbBody"),rootMargin:"1200px 0px"});
+},{root:document.getElementById("lbBody"),rootMargin:"1000px 0px"});
 
-/* 100% 的定義：整頁＝整張剛好看得完；連續＝寬度剛好撐滿畫面 */
 function lbBaseScale(w,h){
-  const maxW=Math.min(window.innerWidth-28,1240), maxH=window.innerHeight-132;
+  const rail=$("#lbRail").classList.contains("on")&&window.innerWidth>760?216:0;
+  const maxW=Math.min(window.innerWidth-28-rail,1240), maxH=window.innerHeight-132;
   return lbFit?Math.min(maxW/w,maxH/h):(maxW/w);
 }
 function lbBox(w,h){
@@ -907,21 +927,31 @@ function lbBox(w,h){
   return {w:Math.max(60,Math.round(w*sc)),h:Math.max(60,Math.round(h*sc))};
 }
 function lbCount(){
-  const tot=lbPages.length||1;
-  $("#lbNo").textContent=tot>1?(lbCur+" / "+tot):"—";
-  $("#lbPrev").disabled=(lbCur<=1); $("#lbNext").disabled=(lbCur>=tot);
+  const el=lbPages[lbCur];
+  $("#lbName").textContent=el?(el.dataset.label||""):"";
+  $("#lbNo").textContent=el?((el.dataset.fp||1)+" / "+(el.dataset.fn||1)):"—";
+  $("#lbPrev").disabled=(lbCur<=0); $("#lbNext").disabled=(lbCur>=lbPages.length-1);
   $("#lbPct").textContent=Math.round(lbZoom*100)+"%";
   $("#lbOut").disabled=(lbZoom<=LB_MIN+.001); $("#lbIn").disabled=(lbZoom>=LB_MAX-.001);
   $("#lbFit").textContent=lbFit?"整頁":"連續";
   lbBody().classList.toggle("snap",lbFit&&Math.abs(lbZoom-1)<.01);
+  const fid=el?el.dataset.file:null;
+  $("#lbRail").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.jump===fid));
 }
-function lbGo(n,smooth){
-  const el=lbPages.find(p=>+p.dataset.page===n); if(!el) return;
-  lbCur=n;
-  lbBody().scrollTo({top:Math.max(0,el.offsetTop-10),behavior:smooth?"smooth":"auto"});
+function lbGo(i,smooth){
+  const el=lbPages[i]; if(!el) return;
+  lbCur=i;
+  const hd=el.previousElementSibling&&el.previousElementSibling.classList.contains("lb-fhd")
+           ?el.previousElementSibling:null;
+  lbBody().scrollTo({top:Math.max(0,(hd||el).offsetTop-10),behavior:smooth?"smooth":"auto"});
   lbCount();
 }
-/* 重新套用尺寸；keep=true 代表只換大小、不要跳頁 */
+function lbJump(fid){
+  const i=lbPages.findIndex(p=>p.dataset.file===fid);
+  if(i<0) return toast("這份檔案沒辦法在這裡翻閱");
+  lbGo(i,false);
+  if(window.innerWidth<=760) $("#lbRail").classList.remove("on");
+}
 function lbRelayout(keep){
   if(!$("#lb").classList.contains("on")) return;
   lbPages.forEach(el=>{
@@ -935,27 +965,37 @@ function lbRelayout(keep){
   lbCount();
   if(!keep) requestAnimationFrame(()=>lbGo(lbCur,false));
   clearTimeout(window.__lbSharp);
-  window.__lbSharp=setTimeout(lbSharpen,320);   // 停手後再把看得到的頁面補畫清楚
+  window.__lbSharp=setTimeout(lbSharpen,320);
 }
-/* 放大後畫面會糊，等使用者停手再用更高解析度重畫可見的頁 */
+/* 停手後把看得到的頁面補畫清楚，順便把離很遠的畫布釋放掉（整章很多頁時手機才撐得住） */
 function lbSharpen(){
   if(!$("#lb").classList.contains("on")) return;
-  const b=lbBody(),top=b.scrollTop-200,bot=b.scrollTop+b.clientHeight+200;
+  const b=lbBody(),vh=b.clientHeight;
+  const near=[b.scrollTop-vh,b.scrollTop+vh*2];
+  const far=[b.scrollTop-vh*4,b.scrollTop+vh*5];
   const dpr=Math.min(window.devicePixelRatio||1,3);
   lbPages.forEach(el=>{
     if(!el.dataset.file) return;
-    if(el.offsetTop+el.offsetHeight<top||el.offsetTop>bot) return;
-    const cv=el.querySelector("canvas"); if(!cv) return;
-    const need=lbBox(+el.dataset.w,+el.dataset.h).w*dpr;
-    if(cv.width<need*.92) lbRender(el,true);
+    const top=el.offsetTop,bot=el.offsetTop+el.offsetHeight;
+    const cv=el.querySelector("canvas");
+    if(bot<far[0]||top>far[1]){
+      if(cv){
+        const box=lbBox(+el.dataset.w,+el.dataset.h);
+        cv.remove();
+        el.insertAdjacentHTML("afterbegin",'<div class="lb-ph" style="width:'+box.w+'px;height:'+box.h+'px"></div>');
+        lbIO.observe(el);
+      }
+      return;
+    }
+    if(bot<near[0]||top>near[1]||!cv) return;
+    if(cv.width<lbBox(+el.dataset.w,+el.dataset.h).w*dpr*.92) lbRender(el,true);
   });
 }
 async function lbRender(el,force){
-  const f=fileById(el.dataset.file),num=+el.dataset.page;
-  if(!f) return;
+  const f=fileById(el.dataset.file),num=+el.dataset.fp;
+  if(!f||el.dataset.busy==="1") return;
   const cur=el.querySelector("canvas");
   if(cur&&!force) return;
-  if(el.dataset.busy==="1") return;
   el.dataset.busy="1";
   try{
     const pdf=await getPdf(f),page=await pdf.getPage(num);
@@ -964,7 +1004,7 @@ async function lbRender(el,force){
     const dpr=Math.min(window.devicePixelRatio||1,3);
     let sc=Math.min((box.w*dpr*1.15)/base.width,8);
     const px=(base.width*sc)*(base.height*sc);
-    if(px>2.6e7) sc*=Math.sqrt(2.6e7/px);          // 避免超大畫布在手機上失敗
+    if(px>2.6e7) sc*=Math.sqrt(2.6e7/px);
     const vp=page.getViewport({scale:sc});
     const cv=document.createElement("canvas");
     cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
@@ -975,11 +1015,10 @@ async function lbRender(el,force){
     el.insertBefore(cv,el.firstChild);
     if(old) old.remove();
   }catch(err){
-    if(!el.querySelector("canvas"))
+    if(!el.querySelector("canvas")&&!el.querySelector("img"))
       el.innerHTML='<div class="lb-load">這一頁讀不出來：'+esc(err.message)+"</div>";
   }finally{ el.dataset.busy="0"; }
 }
-/* 以畫面上某一點為中心縮放 */
 function lbSetZoom(z,cx,cy){
   z=Math.min(LB_MAX,Math.max(LB_MIN,z));
   if(Math.abs(z-lbZoom)<.002) return;
@@ -992,59 +1031,79 @@ function lbSetZoom(z,cx,cy){
 }
 function lbClose(){
   lbPages.forEach(p=>lbIO.unobserve(p));
-  lbPages=[]; lbFile=null; lbBody().innerHTML="";
+  lbPages=[]; lbCur=0; lbSecId=null;
+  lbBody().innerHTML=""; $("#lbRail").innerHTML="";
   $("#lb").classList.remove("on");
 }
-async function openLightbox(fid,num,name){
+/* 放大＝打開這一章的完整閱讀器：整章的檔案接著排，側邊可隨時跳到別份 */
+async function openLightbox(fid,num){
   const f=fileById(fid); if(!f) return toast("找不到這份檔案");
-  lbFile=f; lbCur=num||1; lbPages=[]; lbZoom=1;
-  $("#lbName").textContent=name||f.label||f.name;
+  const sec=visSections().find(x=>visFiles(x).some(y=>y.id===fid))||secById(activeSec);
+  const files=(sec?visFiles(sec):[f]).filter(x=>x.kind==="pdf"||x.kind==="image");
+  lbSecId=sec?sec.id:null; lbPages=[]; lbCur=0; lbZoom=1;
   $("#lb").classList.add("on");
+  $("#lbRail").classList.toggle("on",window.innerWidth>760);
   lbBody().scrollLeft=0;
   lbBody().innerHTML='<div class="lb-stack" id="lbStack"><div class="lb-load">載入中…</div></div>';
-  lbCount();
+  $("#lbName").textContent=f.label||f.name;
+  $("#lbNo").textContent="—";
 
-  if(f.kind==="image"){
+  /* 側邊：這一章的檔案清單 */
+  $("#lbRail").innerHTML='<div class="rl-hd">'+esc(sec?secTitle(sec,visSections().indexOf(sec)):"檔案")+"</div>"+
+    files.map(x=>'<button data-jump="'+x.id+'">'+(x.num?esc(x.num)+"　":"")+esc(x.label||x.name)+
+      '<span class="n">'+(x.kind==="pdf"?(x.pages||"?")+" 頁":"圖片")+"</span></button>").join("");
+  $("#lbRail").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>lbJump(b.dataset.jump));
+
+  const stack=$("#lbStack"); stack.innerHTML="";
+  let jumped=false;
+  for(const x of files){
+    const label=(x.num?x.num+"　":"")+(x.label||x.name);
+    let html='<div class="lb-fhd" data-file="'+x.id+'">'+esc(label);
     try{
-      const url=URL.createObjectURL(new Blob([await Store.getBytes(f)]));
-      $("#lbStack").innerHTML='<div class="lb-page"><img src="'+url+'" alt="'+esc(f.name)+'"></div>';
-      const el=$("#lbStack").firstElementChild, im=el.querySelector("img");
-      const apply=()=>{ el.dataset.w=im.naturalWidth||1000; el.dataset.h=im.naturalHeight||1400;
-                        lbPages=[el]; lbRelayout(true); };
-      if(im.complete&&im.naturalWidth) apply(); else im.onload=apply;
-    }catch(err){ $("#lbStack").innerHTML='<div class="lb-load">這張圖打不開</div>'; }
-    lbCount(); return;
-  }
-  try{
-    const pdf=await getPdf(f);
-    let html="";
-    for(let n=1;n<=pdf.numPages;n++){
-      const vp=(await pdf.getPage(n)).getViewport({scale:1});
-      const b=lbBox(vp.width,vp.height);
-      html+='<div class="lb-page" data-file="'+f.id+'" data-page="'+n+'" data-w="'+vp.width+'" data-h="'+vp.height+
-            '" style="width:'+b.w+'px">'+
-            '<div class="lb-ph" style="width:'+b.w+'px;height:'+b.h+'px"></div>'+
-            '<span class="lb-n">'+n+" / "+pdf.numPages+"</span></div>";
+      if(x.kind==="image"){
+        const url=URL.createObjectURL(new Blob([await Store.getBytes(x)]));
+        html+='<i>圖片</i></div><div class="lb-page" data-file="'+x.id+'" data-fp="1" data-fn="1" '+
+              'data-label="'+esc(label)+'"><img src="'+url+'" alt=""></div>';
+        stack.insertAdjacentHTML("beforeend",html);
+        const el=stack.lastElementChild,im=el.querySelector("img");
+        const apply=()=>{ el.dataset.w=im.naturalWidth||1000; el.dataset.h=im.naturalHeight||1400;
+                          lbRelayout(true); };
+        if(im.complete&&im.naturalWidth) apply(); else im.onload=apply;
+      }else{
+        const pdf=await getPdf(x); x.pages=pdf.numPages;
+        html+="<i>共 "+pdf.numPages+" 頁</i></div>";
+        for(let n=1;n<=pdf.numPages;n++){
+          const vp=(await pdf.getPage(n)).getViewport({scale:1});
+          const b=lbBox(vp.width,vp.height);
+          html+='<div class="lb-page" data-file="'+x.id+'" data-fp="'+n+'" data-fn="'+pdf.numPages+
+                '" data-label="'+esc(label)+'" data-w="'+vp.width+'" data-h="'+vp.height+
+                '" style="width:'+b.w+'px"><div class="lb-ph" style="width:'+b.w+'px;height:'+b.h+
+                'px"></div><span class="lb-n">'+n+" / "+pdf.numPages+"</span></div>";
+        }
+        stack.insertAdjacentHTML("beforeend",html);
+      }
+    }catch(err){
+      stack.insertAdjacentHTML("beforeend",html+'</div><div class="lb-load">這份打不開：'+esc(err.message)+"</div>");
     }
-    if(!$("#lb").classList.contains("on")) return;
-    $("#lbStack").innerHTML=html;
-    lbPages=Array.from($("#lbStack").children);
-    lbPages.forEach(p=>lbIO.observe(p));
-    lbCount();
-    requestAnimationFrame(()=>lbGo(lbCur,false));
-  }catch(err){
-    $("#lbStack").innerHTML='<div class="lb-load">這份檔案打不開：'+esc(err.message)+"</div>";
+    if(!$("#lb").classList.contains("on")) return;      // 使用者已經關掉了
+    lbPages=Array.from(stack.querySelectorAll(".lb-page"));
+    lbPages.forEach(p=>{ if(p.querySelector(".lb-ph")) lbIO.observe(p); });
+    if(!jumped&&x.id===fid){
+      jumped=true;
+      const i=lbPages.findIndex(p=>p.dataset.file===fid&&+p.dataset.fp===(num||1));
+      lbGo(i<0?0:i,false);
+    }
   }
+  lbCount();
 }
 
-/* 捲動時同步頁碼 */
+/* 捲動時同步頁碼與側邊高亮 */
 lbBody().addEventListener("scroll",()=>{
   if(!lbPages.length) return;
   const top=lbBody().scrollTop+60;
-  let cur=lbPages[0];
-  for(const p of lbPages){ if(p.offsetTop<=top) cur=p; else break; }
-  const n=+cur.dataset.page||1;
-  if(n!==lbCur){ lbCur=n; lbCount(); }
+  let i=0;
+  for(let k=0;k<lbPages.length;k++){ if(lbPages[k].offsetTop<=top) i=k; else break; }
+  if(i!==lbCur){ lbCur=i; lbCount(); }
   clearTimeout(window.__lbSharp); window.__lbSharp=setTimeout(lbSharpen,260);
 },{passive:true});
 
@@ -1058,17 +1117,14 @@ lbBody().addEventListener("wheel",e=>{
 
 /* 電腦：按住拖曳平移 */
 (function(){
-  let drag=null;
-  const b=lbBody();
+  let drag=null; const b=lbBody();
   b.addEventListener("pointerdown",e=>{
     if(e.pointerType!=="mouse"||e.button!==0) return;
-    drag={x:e.clientX,y:e.clientY,l:b.scrollLeft,t:b.scrollTop};
-    b.classList.add("grab");
+    drag={x:e.clientX,y:e.clientY,l:b.scrollLeft,t:b.scrollTop}; b.classList.add("grab");
   });
   window.addEventListener("pointermove",e=>{
     if(!drag) return;
-    b.scrollLeft=drag.l-(e.clientX-drag.x);
-    b.scrollTop=drag.t-(e.clientY-drag.y);
+    b.scrollLeft=drag.l-(e.clientX-drag.x); b.scrollTop=drag.t-(e.clientY-drag.y);
   });
   window.addEventListener("pointerup",()=>{ drag=null; b.classList.remove("grab"); });
 })();
@@ -1080,9 +1136,7 @@ lbBody().addEventListener("wheel",e=>{
   b.addEventListener("touchstart",e=>{
     if(e.touches.length===2){
       const r=b.getBoundingClientRect(),t=e.touches;
-      pin={d:dist(t),z:lbZoom,
-           cx:(t[0].clientX+t[1].clientX)/2-r.left,
-           cy:(t[0].clientY+t[1].clientY)/2-r.top};
+      pin={d:dist(t),z:lbZoom,cx:(t[0].clientX+t[1].clientX)/2-r.left,cy:(t[0].clientY+t[1].clientY)/2-r.top};
     }
   },{passive:true});
   b.addEventListener("touchmove",e=>{
@@ -1094,14 +1148,14 @@ lbBody().addEventListener("wheel",e=>{
   b.addEventListener("touchend",()=>{ if(pin){pin=null;pend=null;lbSharpen();} },{passive:true});
 })();
 
-/* 雙擊（雙點）＝ 200% 與 100% 互切 */
 lbBody().addEventListener("dblclick",e=>{
   const r=lbBody().getBoundingClientRect();
   lbSetZoom(lbZoom>1.2?1:2,e.clientX-r.left,e.clientY-r.top);
 });
 
-$("#lbPrev").onclick=()=>lbGo(Math.max(1,lbCur-1),true);
-$("#lbNext").onclick=()=>lbGo(Math.min(lbPages.length,lbCur+1),true);
+$("#lbMenu").onclick=()=>{ $("#lbRail").classList.toggle("on"); lbRelayout(true); };
+$("#lbPrev").onclick=()=>lbGo(Math.max(0,lbCur-1),true);
+$("#lbNext").onclick=()=>lbGo(Math.min(lbPages.length-1,lbCur+1),true);
 $("#lbIn").onclick=()=>lbSetZoom(lbZoom*1.25);
 $("#lbOut").onclick=()=>lbSetZoom(lbZoom/1.25);
 $("#lbPct").onclick=()=>{ lbSetZoom(1); lbRelayout(true); };
@@ -1117,11 +1171,11 @@ document.addEventListener("keydown",e=>{
   if(e.key==="0"){ e.preventDefault(); lbSetZoom(1); lbRelayout(true); return; }
   if(!lbPages.length) return;
   if(e.key==="PageDown"||e.key===" "||(e.key==="ArrowDown"&&lbFit&&lbZoom<=1)){
-    e.preventDefault(); lbGo(Math.min(lbPages.length,lbCur+1),true); }
+    e.preventDefault(); lbGo(Math.min(lbPages.length-1,lbCur+1),true); }
   if(e.key==="PageUp"||(e.key==="ArrowUp"&&lbFit&&lbZoom<=1)){
-    e.preventDefault(); lbGo(Math.max(1,lbCur-1),true); }
-  if(e.key==="Home"){ e.preventDefault(); lbGo(1,true); }
-  if(e.key==="End"){ e.preventDefault(); lbGo(lbPages.length,true); }
+    e.preventDefault(); lbGo(Math.max(0,lbCur-1),true); }
+  if(e.key==="Home"){ e.preventDefault(); lbGo(0,true); }
+  if(e.key==="End"){ e.preventDefault(); lbGo(lbPages.length-1,true); }
 });
 
 /* 放大 / 附件下載 */
@@ -1129,11 +1183,10 @@ document.addEventListener("click",async e=>{
   const z=e.target.closest(".zoom");
   if(z){
     const p=z.closest(".page");
-    const name=(p.closest(".pages")?.previousElementSibling?.textContent||"").trim();
     const fid=p.dataset.file||p.dataset.img;
     const num=+p.dataset.page||1;
     if(!fid) return toast("這一頁還在載入，等一下再試");
-    openLightbox(fid,num,name);
+    openLightbox(fid,num);
     return;
   }
   const dl=e.target.closest("[data-dl]");
