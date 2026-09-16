@@ -349,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V44</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V45</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V44
+   活動專卷 V45
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -944,6 +944,9 @@ function lbCount(){
 }
 function lbGo(i,smooth){
   const el=lbPages[i]; if(!el) return;
+  /* 跳很遠（換章節、側欄點選、快速倒回好幾頁）時，平滑捲動一路上會一直被 snap 卡、
+     手機還會邊捲邊重畫沿路那些頁面造成lag，所以距離遠就直接瞬移過去，不要用smooth */
+  if(smooth&&Math.abs(i-lbCur)>2) smooth=false;
   lbCur=i;
   const hd=el.previousElementSibling&&el.previousElementSibling.classList.contains("lb-fhd")
            ?el.previousElementSibling:null;
