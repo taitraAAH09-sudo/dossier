@@ -349,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V48</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V50</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V48
+   活動專卷 V50
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -947,18 +947,20 @@ async function lbGo(i,smooth){
   const jumpFar=Math.abs(i-lbCur)>2;
   lbCur=i;
   /* 先把目的頁畫好，畫完才跳過去——不要先跳過去再等它自己補畫。
-     不然要跳去的位置高度還沒定案，位置抓不準，看起來就像卡住／跳不過去，
-     這個順序對不對，跟有沒有放大、有沒有snap完全無關 */
+     不然要跳去的位置高度還沒定案，位置抓不準，看起來就像卡住／跳不過去 */
   if(el.querySelector(".lb-ph")) await lbRender(el,true);
   const nb=lbPages[i-1]; if(nb&&nb.querySelector(".lb-ph")) lbRender(nb,true);
   if(!$("#lb").classList.contains("on")) return; // 這期間使用者關掉了放大視窗
   const hd=el.previousElementSibling&&el.previousElementSibling.classList.contains("lb-fhd")
            ?el.previousElementSibling:null;
   const body=lbBody();
-  const target=Math.max(0,(hd||el).offsetTop-10);
+  /* 章節標題用了 position:sticky，一旦它已經黏在畫面頂端，offsetTop 讀出來的
+     會是「現在黏著的位置」而不是它原本該在的位置（Chrome的怪癖），
+     所以位置一律用不會被sticky影響的 el.offsetTop 去算，只借用 hd 的高度(offsetHeight，
+     這個不受sticky影響)留出讓標題露出來的空間——這才是真正修好「往前跳跳不動」的關鍵 */
+  const target=Math.max(0, el.offsetTop-(hd?hd.offsetHeight+10:10));
   /* CSS scroll-snap 就算是直接指定 scrollTop（不是用 scrollTo 動畫）也還是會介入、
-     把位置修正回去，這就是「頁碼有變、畫面卻沒動」的真正原因，
-     所以不管平滑捲動還是瞬間跳，跳頁的當下都先把 snap 關掉 */
+     把位置修正回去，所以不管平滑捲動還是瞬間跳，跳頁的當下都先把 snap 關掉 */
   const wasSnap=body.classList.contains("snap");
   if(wasSnap) body.classList.remove("snap");
   const restore=()=>{ if($("#lb").classList.contains("on")&&lbFit&&Math.abs(lbZoom-1)<.01) body.classList.add("snap"); };
