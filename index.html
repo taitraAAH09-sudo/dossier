@@ -349,7 +349,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V42</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V43</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +422,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V42
+   活動專卷 V43
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -912,7 +912,11 @@ async function renderView(){
 /* ---------- 放大：整章連續翻閱＋縮放拖曳＋側邊檔案清單 ---------- */
 let lbPages=[], lbCur=0, lbFit=true, lbZoom=1, lbSecId=null;
 const LB_MIN=.25, LB_MAX=6;
+const LB_TOUCH=matchMedia("(pointer:coarse)").matches;
+const LB_DPR=()=>Math.min(window.devicePixelRatio||1,LB_TOUCH?2:3);
+const LB_PXCAP=LB_TOUCH?1.5e7:2.6e7;
 const lbBody=()=>$("#lbBody");
+const lbStack=()=>document.getElementById("lbStack");
 const lbIO=new IntersectionObserver(es=>{
   es.forEach(e=>{ if(e.isIntersecting){ lbIO.unobserve(e.target); lbRender(e.target); } });
 },{root:document.getElementById("lbBody"),rootMargin:"1000px 0px"});
@@ -949,7 +953,8 @@ function lbGo(i,smooth){
 function lbJump(fid){
   const i=lbPages.findIndex(p=>p.dataset.file===fid);
   if(i<0) return toast("這份檔案沒辦法在這裡翻閱");
-  lbGo(i,false);
+  $("#lbRail").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.jump===fid));
+  lbGo(i,true);
   if(window.innerWidth<=760) $("#lbRail").classList.remove("on");
 }
 function lbRelayout(keep){
@@ -968,28 +973,41 @@ function lbRelayout(keep){
   window.__lbSharp=setTimeout(lbSharpen,320);
 }
 /* 停手後把看得到的頁面補畫清楚，順便把離很遠的畫布釋放掉（整章很多頁時手機才撐得住） */
-function lbSharpen(){
-  if(!$("#lb").classList.contains("on")) return;
-  const b=lbBody(),vh=b.clientHeight;
-  const near=[b.scrollTop-vh,b.scrollTop+vh*2];
-  const far=[b.scrollTop-vh*4,b.scrollTop+vh*5];
-  const dpr=Math.min(window.devicePixelRatio||1,3);
-  lbPages.forEach(el=>{
-    if(!el.dataset.file) return;
-    const top=el.offsetTop,bot=el.offsetTop+el.offsetHeight;
-    const cv=el.querySelector("canvas");
-    if(bot<far[0]||top>far[1]){
-      if(cv){
-        const box=lbBox(+el.dataset.w,+el.dataset.h);
-        cv.remove();
-        el.insertAdjacentHTML("afterbegin",'<div class="lb-ph" style="width:'+box.w+'px;height:'+box.h+'px"></div>');
-        lbIO.observe(el);
+/* 一次只排隊、慢慢畫，讓瀏覽器有空檔喘氣，避免放大鬆手那一刻整個卡住 */
+let lbSharpBusy=false;
+async function lbSharpen(){
+  if(lbSharpBusy) return; lbSharpBusy=true;
+  try{
+    if(!$("#lb").classList.contains("on")) return;
+    const b=lbBody(),vh=b.clientHeight;
+    const near=[b.scrollTop-vh,b.scrollTop+vh*2];
+    const far=[b.scrollTop-vh*4,b.scrollTop+vh*5];
+    const dpr=LB_DPR();
+    const queue=[];
+    lbPages.forEach(el=>{
+      if(!el.dataset.file) return;
+      const top=el.offsetTop,bot=el.offsetTop+el.offsetHeight;
+      const cv=el.querySelector("canvas");
+      if(bot<far[0]||top>far[1]){
+        if(cv){
+          const box=lbBox(+el.dataset.w,+el.dataset.h);
+          cv.remove();
+          el.insertAdjacentHTML("afterbegin",'<div class="lb-ph" style="width:'+box.w+'px;height:'+box.h+'px"></div>');
+          lbIO.observe(el);
+        }
+        return;
       }
-      return;
+      if(bot<near[0]||top>near[1]) return;
+      if(!cv||cv.width<lbBox(+el.dataset.w,+el.dataset.h).w*dpr*.92) queue.push(el);
+    });
+    const mid=b.scrollTop+vh/2;
+    queue.sort((x,y)=>Math.abs(x.offsetTop-mid)-Math.abs(y.offsetTop-mid));
+    for(const el of queue){
+      if(!$("#lb").classList.contains("on")) break;
+      await lbRender(el,true);
+      await new Promise(r=>setTimeout(r,LB_TOUCH?30:0));
     }
-    if(bot<near[0]||top>near[1]||!cv) return;
-    if(cv.width<lbBox(+el.dataset.w,+el.dataset.h).w*dpr*.92) lbRender(el,true);
-  });
+  }finally{ lbSharpBusy=false; }
 }
 async function lbRender(el,force){
   const f=fileById(el.dataset.file),num=+el.dataset.fp;
@@ -1001,10 +1019,10 @@ async function lbRender(el,force){
     const pdf=await getPdf(f),page=await pdf.getPage(num);
     const base=page.getViewport({scale:1});
     const box=lbBox(base.width,base.height);
-    const dpr=Math.min(window.devicePixelRatio||1,3);
+    const dpr=LB_DPR();
     let sc=Math.min((box.w*dpr*1.15)/base.width,8);
     const px=(base.width*sc)*(base.height*sc);
-    if(px>2.6e7) sc*=Math.sqrt(2.6e7/px);
+    if(px>LB_PXCAP) sc*=Math.sqrt(LB_PXCAP/px);
     const vp=page.getViewport({scale:sc});
     const cv=document.createElement("canvas");
     cv.width=Math.floor(vp.width);cv.height=Math.floor(vp.height);
@@ -1129,23 +1147,43 @@ lbBody().addEventListener("wheel",e=>{
   window.addEventListener("pointerup",()=>{ drag=null; b.classList.remove("grab"); });
 })();
 
-/* 手機：兩指縮放；放大後單指可上下左右拖動 */
+/* 手機：兩指縮放。放大／縮小過程中只用 CSS 位移預覽（不搬動任何頁面、不重畫），
+   放開手指那一刻才真正套用一次新的倍率，滑動才不會卡頓 */
 (function(){
-  const b=lbBody(); let pin=null,raf=0,pend=null;
+  const b=lbBody(); let pin=null;
   const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+  function liveScale(){
+    const m=/scale\(([\d.]+)\)/.exec(lbStack().style.transform);
+    return m?parseFloat(m[1]):1;
+  }
+  function commit(){
+    if(!pin) return;
+    const scale=liveScale();
+    const st=lbStack().style; st.transform=""; st.transformOrigin=""; st.willChange="";
+    const z=Math.min(LB_MAX,Math.max(LB_MIN,pin.z*scale));
+    const r=b.getBoundingClientRect();
+    lbSetZoom(z,pin.cx-r.left,pin.cy-r.top);
+    pin=null;
+  }
   b.addEventListener("touchstart",e=>{
     if(e.touches.length===2){
-      const r=b.getBoundingClientRect(),t=e.touches;
-      pin={d:dist(t),z:lbZoom,cx:(t[0].clientX+t[1].clientX)/2-r.left,cy:(t[0].clientY+t[1].clientY)/2-r.top};
+      const t=e.touches,cx=(t[0].clientX+t[1].clientX)/2,cy=(t[0].clientY+t[1].clientY)/2;
+      const sr=lbStack().getBoundingClientRect();
+      pin={d:dist(t),z:lbZoom,cx,cy};
+      const st=lbStack().style;
+      st.transformOrigin=(cx-sr.left)+"px "+(cy-sr.top)+"px";
+      st.willChange="transform";
     }
   },{passive:true});
   b.addEventListener("touchmove",e=>{
     if(!pin||e.touches.length!==2) return;
     e.preventDefault();
-    pend=[pin.z*(dist(e.touches)/pin.d),pin.cx,pin.cy];
-    if(!raf) raf=requestAnimationFrame(()=>{ raf=0; if(pend) lbSetZoom(pend[0],pend[1],pend[2]); });
+    const raw=dist(e.touches)/pin.d;
+    const clamped=Math.min(LB_MAX/pin.z,Math.max(LB_MIN/pin.z,raw));
+    lbStack().style.transform="scale("+clamped+")";
   },{passive:false});
-  b.addEventListener("touchend",()=>{ if(pin){pin=null;pend=null;lbSharpen();} },{passive:true});
+  b.addEventListener("touchend",e=>{ if(e.touches.length<2) commit(); },{passive:true});
+  b.addEventListener("touchcancel",commit,{passive:true});
 })();
 
 lbBody().addEventListener("dblclick",e=>{
