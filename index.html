@@ -345,7 +345,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V51</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V54</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -418,7 +418,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V51
+   活動專卷 V54
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -1324,18 +1324,38 @@ async function mergePdf(section){
 $("#btnMerge").onclick=()=>mergePdf(null);
 $("#btnReload").onclick=()=>location.reload();
 
-/* 回到這個分頁時，去雲端問一下後台有沒有改過內容 */
-let staleShown=false;
-async function checkFresh(){
-  if(!CLOUD||!fb||!doc||staleShown||admin) return;
+/* 雲端上的內容被別人改過時，這一頁（前台或後台都算）要立刻知道。
+   後台特別重要：存檔是整份蓋過去，手上拿舊的又按存檔，會把別人的修改洗掉。 */
+let STALE=false, overwriteOK=false;
+function markStale(t){
+  if(STALE) return;
+  STALE=true;
+  $("#stamp").classList.add("stale");
+  $("#stampTx").textContent = admin
+    ? "有人在別的地方改過內容（雲端 "+stampFmt(t)+"）。請按 F5 重新整理再繼續改，不然存檔會蓋掉別人的修改"
+    : "後台已經更新過內容，點右邊「重新整理」載入最新版";
+}
+function clearStale(){
+  if(!STALE) return;
+  STALE=false; overwriteOK=false;
+  $("#stamp").classList.remove("stale"); paintStamp();
+}
+/* 一直掛著聽，不用等你切回這個分頁 */
+function watchCloud(){
+  if(!CLOUD||!fb) return;
   try{
-    const snap=await fb.db.ref(DB_ROOT+"/meta/updated").get();
-    const t=snap.val();
-    if(t&&doc.updated&&t!==doc.updated){
-      staleShown=true;
-      $("#stamp").classList.add("stale");
-      $("#stampTx").textContent="後台已經更新過內容，點右邊「重新整理」載入最新版";
-    }
+    fb.db.ref(DB_ROOT+"/meta/updated").on("value",snap=>{
+      const t=snap.val();
+      if(!t||!doc||!doc.updated) return;
+      if(t!==doc.updated) markStale(t); else clearStale();
+    });
+  }catch(e){}
+}
+async function checkFresh(){
+  if(!CLOUD||!fb||!doc||STALE) return;
+  try{
+    const t=(await fb.db.ref(DB_ROOT+"/meta/updated").get()).val();
+    if(t&&doc.updated&&t!==doc.updated) markStale(t);
   }catch(e){}
 }
 addEventListener("focus",checkFresh);
@@ -1411,7 +1431,7 @@ function renderAdmin(){
       <div class="list" id="secList"></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="addSec">新增章節</button>
-        <button class="btn" id="reloadCloud" title="丟掉後台畫面上的資料，直接把雲端上那一份讀回來">從雲端重讀</button>
+        <button class="btn" id="forceSave" title="把後台這一份再寫一次雲端，並回頭確認真的寫進去了。平常每個動作都會自動存，這顆是不放心時補一刀用的">重新存檔</button>
         <button class="btn" id="signOut">登出管理者</button>
         <button class="btn danger" id="wipe">清空整份專卷</button>
       </div>
@@ -1429,14 +1449,9 @@ function renderAdmin(){
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
-  $("#reloadCloud").onclick=async()=>{
-    try{
-      const d=await Store.loadDoc();
-      if(!d||!Array.isArray(d.sections)) return toast("雲端上沒有資料",4000);
-      doc=d; doc.sections.forEach(x=>{x.files=x.files||[];ensureFolders(x)});
-      activeSec=null; paintStamp(); renderAdmin();
-      toast("已把雲端那一份讀回來（更新於 "+stampFmt(doc.updated)+"）。畫面上現在顯示的，就是前台會拿到的狀態。",6000);
-    }catch(e){ toast("重讀失敗："+e.message,6000) }
+  $("#forceSave").onclick=async()=>{
+    if(await save())
+      toast("已存檔，雲端確認更新於 "+stampFmt(doc.updated)+"。前台重新整理就會拿到這一份。",5000);
   };
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
@@ -1677,15 +1692,24 @@ async function handleFiles(files){
 }
 
 async function save(){
+  /* 手上是舊的就先問過再寫，問過一次就記住，不會每打一個字跳一次 */
+  if(STALE&&!overwriteOK){
+    const yes=confirm("有人在別的地方改過這份專卷，雲端上那一份比你手上的新。\n\n確定＝用你後台畫面上這一份整個蓋過去，別人剛剛改的會不見。\n取消＝先不要存，按 F5 重新整理拿到最新版再改。");
+    if(!yes){ toast("這次沒有存檔。請按 F5 重新整理，拿到最新版再改",6000); return false; }
+    overwriteOK=true;
+  }
   try{
     await Store.saveDoc(doc); paintStamp();
     /* 存完回頭問雲端一次：對不上就是這次沒寫進去，不要讓後台自己以為存好了 */
     if(CLOUD){
       const t=(await fb.db.ref(DB_ROOT+"/meta/updated").get()).val();
-      if(t!==doc.updated)
-        toast("⚠ 這次好像沒存進雲端（後台 "+stampFmt(doc.updated)+"／雲端 "+stampFmt(t)+"），按「從雲端重讀」對一下",6000);
+      if(t!==doc.updated){
+        toast("⚠ 這次沒存進雲端（後台 "+stampFmt(doc.updated)+"／雲端 "+stampFmt(t)+"），按「重新存檔」再寫一次",6000);
+        return false;
+      }
     }
-  }catch(err){toast("存檔失敗："+err.message,6000)}
+    return true;
+  }catch(err){toast("存檔失敗："+err.message,6000); return false}
 }
 
 /* ---------- 模式 ---------- */
@@ -1809,6 +1833,7 @@ $("#verBadge").onclick=()=>{
     }
     if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
+    watchCloud();
     EDITION=curEdition();
     dg("前台版本","", edName(EDITION)+"（?v="+EDITION+"）");
     dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份（本版可見 "
