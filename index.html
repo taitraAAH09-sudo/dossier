@@ -201,10 +201,6 @@ button{cursor:pointer;border:0;background:none}
 .cap.hot .capbar i{background:var(--danger)}
 .caprow{display:flex;gap:10px;flex-wrap:wrap;align-items:baseline;font-size:12.5px;color:var(--ink-3);line-height:1.7}
 .caprow b{font-size:13.5px;color:var(--ink);font-weight:650}
-.edview{display:flex;align-items:center;gap:6px;margin:0 0 10px;font-size:12.5px;color:var(--ink-3)}
-.edview button{border:1px solid var(--rule);background:#fff;border-radius:7px;padding:4px 11px;
-  font-size:12.5px;color:var(--ink-2)}
-.edview button.on{background:var(--ink);border-color:var(--ink);color:#fff;font-weight:600}
 .fitem{padding:9px 12px 9px 14px;border-top:1px solid #F1EFE9;border-left:6px solid #E4E2DA;
   transition:opacity .12s,background .12s}
 .fitem.only-in{border-left-color:#15527F;background:#DDEBF7}
@@ -349,7 +345,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V50</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V51</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -422,7 +418,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V50
+   活動專卷 V51
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -1412,15 +1408,10 @@ function renderAdmin(){
     <div class="panel">
       <h3>章節與檔案</h3>
       <p class="sub">同一章裡可以放各版本專用的檔案。左側色條：藍＝只給處內版、金＝只給 Gurus、無色＝兩版都給。<br>最左邊的編號預設抓檔名，可以直接改成你要的，留白就不顯示。<br>資料夾晶片上也有版本開關，關掉整個資料夾，裡面的檔案跟著隱藏。</p>
-      <div class="edview">
-        <span>只看</span>
-        ${EDITIONS.map(e=>`<button data-edv="${e.k}" class="${EDVIEW===e.k?"on":""}">${esc(e.n)}</button>`).join("")}
-        <span style="flex:1"></span>
-        <span style="font-size:12px">淡掉的那幾列＝這一版看不到</span>
-      </div>
       <div class="list" id="secList"></div>
       <div class="row" style="margin-top:12px">
         <button class="btn" id="addSec">新增章節</button>
+        <button class="btn" id="reloadCloud" title="丟掉後台畫面上的資料，直接把雲端上那一份讀回來">從雲端重讀</button>
         <button class="btn" id="signOut">登出管理者</button>
         <button class="btn danger" id="wipe">清空整份專卷</button>
       </div>
@@ -1438,6 +1429,15 @@ function renderAdmin(){
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
+  $("#reloadCloud").onclick=async()=>{
+    try{
+      const d=await Store.loadDoc();
+      if(!d||!Array.isArray(d.sections)) return toast("雲端上沒有資料",4000);
+      doc=d; doc.sections.forEach(x=>{x.files=x.files||[];ensureFolders(x)});
+      activeSec=null; paintStamp(); renderAdmin();
+      toast("已把雲端那一份讀回來（更新於 "+stampFmt(doc.updated)+"）。畫面上現在顯示的，就是前台會拿到的狀態。",6000);
+    }catch(e){ toast("重讀失敗："+e.message,6000) }
+  };
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
     so.onclick=async()=>{ await fb.auth.signOut(); await fb.auth.signInAnonymously();
@@ -1449,14 +1449,10 @@ function renderAdmin(){
     for(const f of allFiles()) await Store.delBlob(f);
     doc=blankDoc();activeSec=null;pdfCache.clear();
     await save();renderAdmin();renderView();toast("已清空")};
-  $("#adminPane").querySelectorAll("[data-edv]").forEach(b=>b.onclick=()=>{
-    EDVIEW=b.dataset.edv; renderAdmin();
-  });
   bindDrop(); renderSecList();
 }
 
 const edVal=(o,k)=>edOn(o,k);
-let EDVIEW=EDK[0];  // 後台「只看」預覽，不影響前台
 function edClass(o){
   const on=EDK.filter(k=>edVal(o,k));
   if(!on.length) return "ed-none";
@@ -1529,7 +1525,7 @@ function renderSecList(){
         <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
       </div>
       ${s.files.length? s.files.map((f,fi)=>`
-        <div class="fitem ${edClass(f)} ${EDVIEW!=="all"&&!edVal(f,EDVIEW)?"muted":""}">
+        <div class="fitem ${edClass(f)}">
           <div class="fr1">
             <input class="numi" value="${esc(f.num||"")}" data-fnum="${f.id}" maxlength="10"
                    placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":"檔"}"
@@ -1681,7 +1677,15 @@ async function handleFiles(files){
 }
 
 async function save(){
-  try{await Store.saveDoc(doc);paintStamp()}catch(err){toast("存檔失敗："+err.message)}
+  try{
+    await Store.saveDoc(doc); paintStamp();
+    /* 存完回頭問雲端一次：對不上就是這次沒寫進去，不要讓後台自己以為存好了 */
+    if(CLOUD){
+      const t=(await fb.db.ref(DB_ROOT+"/meta/updated").get()).val();
+      if(t!==doc.updated)
+        toast("⚠ 這次好像沒存進雲端（後台 "+stampFmt(doc.updated)+"／雲端 "+stampFmt(t)+"），按「從雲端重讀」對一下",6000);
+    }
+  }catch(err){toast("存檔失敗："+err.message,6000)}
 }
 
 /* ---------- 模式 ---------- */
