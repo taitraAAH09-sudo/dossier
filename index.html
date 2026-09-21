@@ -102,6 +102,25 @@ button{cursor:pointer;border:0;background:none}
 /* 章節總覽 */
 .cover h1{margin:6px 0 4px;font-size:27px;font-weight:650;letter-spacing:.01em}
 .cover .lead{margin:0 0 22px;color:var(--ink-3);font-size:14.5px}
+.stats-cards{display:flex;flex-wrap:wrap;gap:12px;margin:-8px 0 22px}
+.stat-card{flex:0 1 210px;min-width:150px;background:var(--card);border:1px solid var(--rule);border-left:4px solid #E38B29;
+  border-radius:10px;padding:14px 16px}
+.stat-num{display:flex;align-items:baseline;gap:4px;flex-wrap:wrap}
+.stat-num b{font-size:26px;font-weight:750;color:var(--ink);letter-spacing:.01em}
+.stat-num .unit{font-size:14px;color:var(--ink-3)}
+.stat-label{font-size:13px;color:var(--ink-2);margin-top:2px}
+.stat-div{border-top:1px dashed var(--rule);margin:10px 0 8px}
+.stat-last{font-size:12px;color:var(--ink-3)}
+.stat-arrow{font-size:13px;line-height:1}
+.stat-arrow.up{color:var(--danger)}
+.stat-arrow.down{color:#2E7D4F}
+.statgrid{display:flex;flex-direction:column;gap:8px}
+.statrow{display:flex;align-items:center;flex-wrap:wrap;gap:16px;
+  padding:10px 14px;background:#FCFBF8;border:1px solid var(--rule);border-radius:9px}
+.statrow .statname{font-weight:600;font-size:13.5px;color:var(--ink);flex:0 0 180px}
+.statrow .edt{flex:0 0 auto}
+.statrow .field{flex:0 0 110px}
+.statrow .statname i{font-weight:400;font-style:normal;font-size:12px;color:var(--ink-3)}
 .folders{display:grid;grid-template-columns:1fr;gap:12px}
 .folder{display:block;text-align:left;background:var(--card);border:1px solid var(--rule);
   border-left:5px solid var(--c,#B9BDC2);border-radius:10px;padding:14px 15px;transition:box-shadow .14s,transform .14s}
@@ -348,7 +367,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V56</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V58</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -421,7 +440,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V56
+   活動專卷 V58
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -651,6 +670,47 @@ const Store={
 let doc=null, activeSec=null;
 let openRailGroups=new Set();
 const blankDoc=()=>({title:"活動專卷",subtitle:"",sections:[],updated:Date.now()});
+const STAT_ITEMS=[
+  {key:"vendors",label:"廠商數",unit:"家"},
+  {key:"booths",label:"攤位數",unit:"攤"},
+  {key:"countries",label:"參展廠商國家數",unit:"國"},
+  {key:"buyersDomestic",label:"國內預登買主數",unit:"人"},
+  {key:"buyersForeign",label:"國外預登買主數",unit:"人"}
+];
+function ensureStats(){
+  if(!doc.stats||typeof doc.stats!=="object") doc.stats={};
+  STAT_ITEMS.forEach(it=>{
+    if(!doc.stats[it.key]||typeof doc.stats[it.key]!=="object")
+      doc.stats[it.key]={cur:"",last:""};
+    doc.stats[it.key].unit=it.unit;   // 單位固定，不開放後台編輯
+  });
+}
+function numFmt(v){
+  if(v===""||v==null) return "";
+  const n=Number(String(v).replace(/,/g,""));
+  return isNaN(n)?esc(String(v)):n.toLocaleString("en-US");
+}
+function statArrow(cur,last){
+  if(cur===""||last===""||cur==null||last==null) return "";
+  const c=Number(cur), l=Number(last);
+  if(isNaN(c)||isNaN(l)||c===l) return "";
+  return c>l?'<span class="stat-arrow up">▲</span>':'<span class="stat-arrow down">▼</span>';
+}
+function statsFrontHTML(){
+  if(!doc.stats) return "";
+  const cards=STAT_ITEMS.map(it=>{
+    const s=doc.stats[it.key]||{cur:"",last:"",unit:""};
+    if(!edOn(s,EDITION)) return "";               // 這一項沒開給目前版本看
+    if(s.cur===""||Number(s.cur)===0) return "";  // 沒填或填 0 就不顯示
+    return '<div class="stat-card"><div class="stat-num"><b>'+numFmt(s.cur)+"</b>"+
+      (s.unit?'<span class="unit">'+esc(s.unit)+"</span>":"")+statArrow(s.cur,s.last)+"</div>"+
+      '<div class="stat-label">'+esc(it.label)+"</div>"+
+      (s.last!==""?'<div class="stat-div"></div><div class="stat-last">去年 '+numFmt(s.last)+"</div>":"")+
+      "</div>";
+  }).join("");
+  if(!cards) return "";
+  return '<div class="stats-cards">'+cards+"</div>";
+}
 const secById=id=>doc.sections.find(s=>s.id===id);
 const secColor=s=>COLORS[doc.sections.indexOf(s)%COLORS.length];
 const allFiles=()=>doc.sections.flatMap(s=>s.files);
@@ -831,6 +891,7 @@ async function renderView(){
     pane.innerHTML='<div class="cover"><h1>'+esc(doc.title||"活動專卷")+"</h1>"+
       '<p class="lead">'+esc(edName(EDITION))+"　·　"+(doc.subtitle?esc(doc.subtitle)+"　·　":"")+
       "共 "+vs.length+" 個章節、"+nf+" 份文件</p>"+
+      statsFrontHTML()+
       '<div class="folders">'+vs.map((s,i)=>{
         const fs=visFiles(s), sz=fs.reduce((a,f)=>a+(f.size||0),0);
         return '<button class="folder" data-sec="'+s.id+'" style="--c:'+COLORS[doc.sections.indexOf(s)%COLORS.length]+'">'+
@@ -1373,6 +1434,7 @@ addEventListener("resize",measureTop);
 
 /* ---------- 後台 ---------- */
 function renderAdmin(){
+  ensureStats();
   $("#adminPane").innerHTML=`
     <div class="panel">
       <h3>網址</h3>
@@ -1400,6 +1462,22 @@ function renderAdmin(){
         <input type="checkbox" id="fAutoNum" ${doc.autoNumber===false?"":"checked"} style="width:auto">
         章節自動編號：每個版本各自從 01 開始重排（關掉就照你自己打的名稱顯示）
       </label>
+    </div>
+
+    <div class="panel">
+      <h3>展覽數據</h3>
+      <p class="sub">填本屆數字，順便填去年同期數字，前台就會自動比較顯示箭頭：<span style="color:var(--danger)">▲紅色＝比去年高</span>、<span style="color:#2E7D4F">▼綠色＝比去年低</span>。本屆留空或填 0，前台就不顯示那一項；每一項也可以選要不要出現在處內版／Gurus 版。</p>
+      <div class="statgrid">
+        ${STAT_ITEMS.map(it=>`
+        <div class="statrow">
+          <span class="statname">${esc(it.label)}${it.unit?'<i>（單位：'+esc(it.unit)+'）</i>':""}</span>
+          <span class="edt">${EDITIONS.map(e=>`<button data-statk="${it.key}" data-k="${e.k}" class="${edVal(doc.stats[it.key],e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+          <label class="field"><span>本屆</span>
+            <input id="fStat_${it.key}_cur" value="${esc(doc.stats[it.key].cur)}" inputmode="numeric"></label>
+          <label class="field"><span>去年</span>
+            <input id="fStat_${it.key}_last" value="${esc(doc.stats[it.key].last)}" inputmode="numeric"></label>
+        </div>`).join("")}
+      </div>
     </div>
 
     <div class="panel">
@@ -1449,6 +1527,14 @@ function renderAdmin(){
   $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
   $("#fSub").oninput=e=>{doc.subtitle=e.target.value;save()};
   $("#fAutoNum").onchange=e=>{doc.autoNumber=e.target.checked;save();renderAdmin()};
+  STAT_ITEMS.forEach(it=>{
+    $("#fStat_"+it.key+"_cur").oninput=e=>{doc.stats[it.key].cur=e.target.value;save()};
+    $("#fStat_"+it.key+"_last").oninput=e=>{doc.stats[it.key].last=e.target.value;save()};
+  });
+  $("#adminPane").querySelectorAll("[data-statk]").forEach(b=>b.onclick=async()=>{
+    edToggle(doc.stats[b.dataset.statk],b.dataset.k);
+    await save(); renderAdmin();
+  });
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
@@ -1836,6 +1922,7 @@ $("#verBadge").onclick=()=>{
     }
     if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
+    ensureStats();
     watchCloud();
     EDITION=curEdition();
     dg("前台版本","", edName(EDITION)+"（?v="+EDITION+"）");
