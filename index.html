@@ -154,6 +154,8 @@ button{cursor:pointer;border:0;background:none}
   border-radius:6px;padding:4px 9px;font-size:12px;color:var(--ink-2);opacity:0;transition:opacity .15s}
 .page:hover .zoom{opacity:1}
 .wide-hint{display:none;font-size:12px;color:var(--gold);margin:0 0 6px}
+.ph.snapwait{height:220px;display:flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:13px;background:#fafafa}
+.webnote2{font-size:12px;color:var(--ink-3);margin:6px 2px 0}
 .webbox{position:relative;border:1px solid var(--rule);background:#fff;border-radius:8px;overflow:hidden}
 .webbox .webzoom{position:absolute;right:8px;top:8px;z-index:2;background:rgba(255,255,255,.94);border:1px solid var(--rule);
   border-radius:7px;padding:5px 11px;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)}
@@ -396,7 +398,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V61</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V62</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -469,7 +471,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V61
+   活動專卷 V62
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -676,6 +678,7 @@ const Store={
     await idb("blobs","readwrite",s=>s.put(blob,id));
   },
   async getBytes(f){
+    if(f.kind==="web") return (await getSnap(f)).bytes;   // 即時網頁：用當下擷取的畫面
     if(CLOUD){
       const s=await fb.db.ref(DB_ROOT+"/blobs/"+f.id).get();
       if(!s.exists()) throw new Error("雲端上找不到這個檔案");
@@ -770,6 +773,55 @@ const gurusBase=()=>(doc&&doc.gurusBase)||new URL("gurus.html",location.href).hr
 const roomOf=u=>{ try{ return new URL(u).searchParams.get("room")||"1"; }catch(e){ return "1"; } };
 const isGurus=u=>/gurus/i.test(u||"");
 const webViewUrl=u=>withParams(u,{view:"1"});
+/* ---------- 即時網頁 → 當下畫面（像一頁 PDF）----------
+   背後開一個看不見的 Gurus，畫好後把整張表拍成 PNG 傳回來；
+   Gurus 資料有變動會再拍一次，這邊跟著換圖。 */
+const SNAP=new Map(), SNAP_WAIT=new Map(), SNAP_FR=new Map();
+function snapFrame(f){
+  if(SNAP_FR.has(f.id)) return SNAP_FR.get(f.id);
+  const fr=document.createElement("iframe");
+  fr.src=withParams(f.url,{view:"1",embed:"1",snap:"1"});
+  fr.setAttribute("aria-hidden","true"); fr.tabIndex=-1; fr.title="snapshot";
+  fr.style.cssText="position:fixed;left:-30000px;top:0;width:1800px;height:1200px;border:0;opacity:0;pointer-events:none";
+  document.body.appendChild(fr); SNAP_FR.set(f.id,fr); return fr;
+}
+function getSnap(f,timeout=30000){
+  if(SNAP.has(f.id)) return Promise.resolve(SNAP.get(f.id));
+  snapFrame(f);
+  return new Promise((res,rej)=>{
+    const arr=SNAP_WAIT.get(f.id)||[]; arr.push(res); SNAP_WAIT.set(f.id,arr);
+    setTimeout(()=>{ if(!SNAP.has(f.id)) rej(new Error("讀取逾時")); },timeout);
+  });
+}
+function paintSnap(fid){
+  const sn=SNAP.get(fid); if(!sn) return;
+  document.querySelectorAll('[data-webimg="'+fid+'"]').forEach(el=>{
+    el.innerHTML='<img src="'+sn.url+'" alt="出席一覽表"><button class="zoom">放大</button>';
+  });
+  const two=n=>String(n).padStart(2,"0"), d=new Date(sn.t);
+  document.querySelectorAll('[data-snapnote="'+fid+'"]').forEach(p=>{
+    p.textContent="資料來自 Gurus，截至 "+two(d.getHours())+":"+two(d.getMinutes())+"；Gurus 有修改會自動換成新版，下載 PDF 也會包含這一頁。";
+  });
+}
+function snapFallback(f,err){   // 拍不到就退回即時嵌入
+  document.querySelectorAll('[data-webimg="'+f.id+'"]').forEach(el=>{
+    const box=el.closest(".pages"); if(!box) return;
+    box.outerHTML='<div class="webbox"><button class="webzoom" data-webzoom="'+f.id+'">放大</button>'+
+      '<iframe data-web="'+f.id+'" src="'+esc(embedUrl(f.url))+'" title="'+esc(f.label||f.name)+'" style="height:260px"></iframe>'+
+      '<div class="webnote">即時畫面（擷取失敗改用直接嵌入：'+esc(err.message)+'）</div></div>';
+  });
+}
+window.addEventListener("message",e=>{
+  const d=e.data; if(!d||d.type!=="gurus-snap"||!d.buf) return;
+  let fid=null; SNAP_FR.forEach((fr,id)=>{ if(fr.contentWindow===e.source) fid=id; });
+  if(!fid) return;
+  const old=SNAP.get(fid); if(old) URL.revokeObjectURL(old.url);
+  const bytes=new Uint8Array(d.buf);
+  SNAP.set(fid,{bytes,url:URL.createObjectURL(new Blob([bytes],{type:"image/png"})),w:d.w,h:d.h,t:Date.now()});
+  (SNAP_WAIT.get(fid)||[]).forEach(r=>r(SNAP.get(fid))); SNAP_WAIT.delete(fid);
+  paintSnap(fid);
+});
+
 /* 放大：全螢幕原尺寸，可左右捲動、手機可雙指縮放 */
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-webzoom]"); if(!b) return;
@@ -984,8 +1036,9 @@ async function renderView(){
           (f.kind==="web"?'<a class="btn dl-one" href="'+esc(webViewUrl(f.url))+'" target="_blank" rel="noopener" style="text-decoration:none">開新視窗</a>':'')+
           (f.kind==="web"?'':'<button class="btn dl-one" data-dl="'+f.id+'" title="只下載這一份原始檔（'+esc(f.name)+'）">下載這份</button>')+
           "</div>";
-    if(f.kind==="web") html+='<div class="webbox"><button class="webzoom" data-webzoom="'+f.id+'">放大</button><iframe data-web="'+f.id+'" src="'+esc(embedUrl(f.url))+'" loading="lazy" title="'+esc(f.label||f.name)+'" style="height:260px"></iframe>'+
-         '<div class="webnote">即時畫面，Gurus 改了這裡就跟著更新；下載 PDF 不含這一區。</div></div>';
+    if(f.kind==="web") html+='<div class="pages"><div class="page" id="pg-'+f.id+'-1" data-img="'+f.id+'" data-webimg="'+f.id+'">'+
+         '<div class="ph snapwait">正在擷取最新的出席一覽表…</div></div></div>'+
+         '<p class="webnote2" data-snapnote="'+f.id+'">資料來自 Gurus，重新整理就是最新版；下載 PDF 也會包含這一頁。</p>';
     else if(f.kind==="pdf") html+='<div class="pages" data-pdf="'+f.id+'"></div>';
     else if(f.kind==="image") html+='<div class="pages"><div class="page" id="pg-'+f.id+'-1" data-img="'+f.id+'"><div class="ph" style="height:200px"></div></div></div>';
     else html+='<div class="attach"><div class="ic">'+esc((f.name.split(".").pop()||"檔").slice(0,4).toUpperCase())+
@@ -1018,6 +1071,10 @@ async function renderView(){
         }
         box.querySelectorAll(".page").forEach(p=>io.observe(p));
       }catch(err){ box.innerHTML='<div class="empty">這份檔案打不開：'+esc(err.message)+"</div>"; }
+    }
+    if(f.kind==="web"){
+      getSnap(f).then(()=>paintSnap(f.id)).catch(err=>snapFallback(f,err));
+      continue;
     }
     if(f.kind==="image"){
       const el=pane.querySelector('[data-img="'+f.id+'"]'); if(!el) continue;
@@ -1207,7 +1264,7 @@ function lbClose(){
 async function openLightbox(fid,num){
   const f=fileById(fid); if(!f) return toast("找不到這份檔案");
   const sec=visSections().find(x=>visFiles(x).some(y=>y.id===fid))||secById(activeSec);
-  const files=(sec?visFiles(sec):[f]).filter(x=>x.kind==="pdf"||x.kind==="image");
+  const files=(sec?visFiles(sec):[f]).filter(x=>x.kind==="pdf"||x.kind==="image"||x.kind==="web");
   lbSecId=sec?sec.id:null; lbPages=[]; lbCur=0; lbZoom=1;
   $("#lb").classList.add("on");
   $("#lbRail").classList.toggle("on",window.innerWidth>760);
@@ -1219,7 +1276,7 @@ async function openLightbox(fid,num){
   /* 側邊：這一章的檔案清單 */
   $("#lbRail").innerHTML='<div class="rl-hd">'+esc(sec?secTitle(sec,visSections().indexOf(sec)):"檔案")+"</div>"+
     files.map(x=>'<button data-jump="'+x.id+'">'+(x.num?esc(x.num)+"　":"")+esc(x.label||x.name)+
-      '<span class="n">'+(x.kind==="pdf"?(x.pages||"?")+" 頁":"圖片")+"</span></button>").join("");
+      '<span class="n">'+(x.kind==="pdf"?(x.pages||"?")+" 頁":x.kind==="web"?"即時":"圖片")+"</span></button>").join("");
   $("#lbRail").querySelectorAll("[data-jump]").forEach(b=>b.onclick=()=>lbJump(b.dataset.jump));
 
   const stack=$("#lbStack"); stack.innerHTML="";
@@ -1228,7 +1285,7 @@ async function openLightbox(fid,num){
     const label=(x.num?x.num+"　":"")+(x.label||x.name);
     let html='<div class="lb-fhd" data-file="'+x.id+'">'+esc(label);
     try{
-      if(x.kind==="image"){
+      if(x.kind==="image"||x.kind==="web"){
         const url=URL.createObjectURL(new Blob([await Store.getBytes(x)]));
         html+='<i>圖片</i></div><div class="lb-page" data-file="'+x.id+'" data-fp="1" data-fn="1" '+
               'data-label="'+esc(label)+'"><img src="'+url+'" alt=""></div>';
@@ -1414,7 +1471,7 @@ function saveBlob(blob,name){
 }
 async function mergePdf(section){
   const files=(section?visFiles(section):visSections().flatMap(visFiles))
-                .filter(f=>f.kind==="pdf"||f.kind==="image");
+                .filter(f=>f.kind==="pdf"||f.kind==="image"||f.kind==="web");
   if(!files.length) return toast("沒有可以合併的內容");
   const btn=section?$("#btnSecPdf"):$("#btnMerge");
   const label=btn.textContent; btn.disabled=true; btn.textContent="整理中…";
@@ -1428,7 +1485,7 @@ async function mergePdf(section){
           const src=await PDFDocument.load(bytes,{ignoreEncryption:true});
           (await out.copyPages(src,src.getPageIndices())).forEach(p=>out.addPage(p));
         }else{
-          const img=f.name.toLowerCase().endsWith(".png")?await out.embedPng(bytes):await out.embedJpg(bytes);
+          const img=(f.kind==="web"||f.name.toLowerCase().endsWith(".png"))?await out.embedPng(bytes):await out.embedJpg(bytes);
           out.addPage([img.width,img.height]).drawImage(img,{x:0,y:0,width:img.width,height:img.height});
         }
       }catch(err){skipped++}
