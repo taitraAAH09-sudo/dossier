@@ -398,7 +398,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V62</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V63</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -471,7 +471,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V62
+   活動專卷 V63
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -782,7 +782,7 @@ function snapFrame(f){
   const fr=document.createElement("iframe");
   fr.src=withParams(f.url,{view:"1",embed:"1",snap:"1"});
   fr.setAttribute("aria-hidden","true"); fr.tabIndex=-1; fr.title="snapshot";
-  fr.style.cssText="position:fixed;left:-30000px;top:0;width:1800px;height:1200px;border:0;opacity:0;pointer-events:none";
+  fr.style.cssText="position:fixed;left:-30000px;top:0;width:1920px;height:1200px;border:0;opacity:0;pointer-events:none";
   document.body.appendChild(fr); SNAP_FR.set(f.id,fr); return fr;
 }
 function getSnap(f,timeout=30000){
