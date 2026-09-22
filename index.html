@@ -398,7 +398,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V63</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V64</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -471,7 +471,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V63
+   活動專卷 V64
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -777,6 +777,17 @@ const webViewUrl=u=>withParams(u,{view:"1"});
    背後開一個看不見的 Gurus，畫好後把整張表拍成 PNG 傳回來；
    Gurus 資料有變動會再拍一次，這邊跟著換圖。 */
 const SNAP=new Map(), SNAP_WAIT=new Map(), SNAP_FR=new Map();
+/* 上一次拍好的圖存在這台裝置（IndexedDB），打開時先秀；Gurus 沒改就不重拍 */
+const snapKey=id=>"snap:"+id;
+const snapLoad=id=>idb("kv","readonly",st=>st.get(snapKey(id))).catch(()=>null);
+const snapStore=(id,v)=>idb("kv","readwrite",st=>st.put(v,snapKey(id))).catch(()=>{});
+function snapUse(fid,rec){
+  const old=SNAP.get(fid); if(old) URL.revokeObjectURL(old.url);
+  const bytes=rec.bytes instanceof Uint8Array?rec.bytes:new Uint8Array(rec.bytes);
+  SNAP.set(fid,{bytes,url:URL.createObjectURL(new Blob([bytes],{type:"image/png"})),w:rec.w,h:rec.h,t:rec.t,sig:rec.sig});
+  (SNAP_WAIT.get(fid)||[]).forEach(r=>r(SNAP.get(fid))); SNAP_WAIT.delete(fid);
+  paintSnap(fid);
+}
 function snapFrame(f){
   if(SNAP_FR.has(f.id)) return SNAP_FR.get(f.id);
   const fr=document.createElement("iframe");
@@ -787,7 +798,8 @@ function snapFrame(f){
 }
 function getSnap(f,timeout=30000){
   if(SNAP.has(f.id)) return Promise.resolve(SNAP.get(f.id));
-  snapFrame(f);
+  snapLoad(f.id).then(rec=>{ if(rec&&rec.bytes&&!SNAP.has(f.id)) snapUse(f.id,rec); });
+  snapFrame(f);   // 背後照樣開 Gurus 比對指紋；有變才重拍
   return new Promise((res,rej)=>{
     const arr=SNAP_WAIT.get(f.id)||[]; arr.push(res); SNAP_WAIT.set(f.id,arr);
     setTimeout(()=>{ if(!SNAP.has(f.id)) rej(new Error("讀取逾時")); },timeout);
@@ -811,15 +823,22 @@ function snapFallback(f,err){   // 拍不到就退回即時嵌入
       '<div class="webnote">即時畫面（擷取失敗改用直接嵌入：'+esc(err.message)+'）</div></div>';
   });
 }
-window.addEventListener("message",e=>{
-  const d=e.data; if(!d||d.type!=="gurus-snap"||!d.buf) return;
+window.addEventListener("message",async e=>{
+  const d=e.data; if(!d||(d.type!=="gurus-sig"&&d.type!=="gurus-snap")) return;
   let fid=null; SNAP_FR.forEach((fr,id)=>{ if(fr.contentWindow===e.source) fid=id; });
   if(!fid) return;
-  const old=SNAP.get(fid); if(old) URL.revokeObjectURL(old.url);
-  const bytes=new Uint8Array(d.buf);
-  SNAP.set(fid,{bytes,url:URL.createObjectURL(new Blob([bytes],{type:"image/png"})),w:d.w,h:d.h,t:Date.now()});
-  (SNAP_WAIT.get(fid)||[]).forEach(r=>r(SNAP.get(fid))); SNAP_WAIT.delete(fid);
-  paintSnap(fid);
+  if(d.type==="gurus-sig"){
+    const cur=SNAP.get(fid);
+    let rec=cur&&cur.sig?cur:await snapLoad(fid);
+    const same=!!(rec&&rec.bytes&&rec.sig===d.sig);
+    if(same&&!SNAP.has(fid)) snapUse(fid,rec);
+    e.source.postMessage({type:"gurus-snap-need",sig:d.sig,need:!same},"*");
+    return;
+  }
+  if(!d.buf) return;
+  const rec={bytes:new Uint8Array(d.buf),w:d.w,h:d.h,t:Date.now(),sig:d.sig||""};
+  snapUse(fid,rec);
+  snapStore(fid,rec);
 });
 
 /* 放大：全螢幕原尺寸，可左右捲動、手機可雙指縮放 */
