@@ -154,6 +154,26 @@ button{cursor:pointer;border:0;background:none}
   border-radius:6px;padding:4px 9px;font-size:12px;color:var(--ink-2);opacity:0;transition:opacity .15s}
 .page:hover .zoom{opacity:1}
 .wide-hint{display:none;font-size:12px;color:var(--gold);margin:0 0 6px}
+.webbox{position:relative;border:1px solid var(--rule);background:#fff;border-radius:8px;overflow:hidden}
+.webbox .webzoom{position:absolute;right:8px;top:8px;z-index:2;background:rgba(255,255,255,.94);border:1px solid var(--rule);
+  border-radius:7px;padding:5px 11px;font-size:13px;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.webfull{position:fixed;inset:0;z-index:130;background:#fff;display:flex;flex-direction:column}
+.webfull .wf-hd{display:flex;align-items:center;gap:10px;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top,0px));
+  border-bottom:1px solid var(--rule);background:var(--card)}
+.webfull .wf-hd b{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.webfull .wf-hd span{font-size:12px;color:var(--ink-3)}
+.webfull iframe{flex:1;width:100%;border:0}
+.webbox iframe{display:block;width:100%;height:640px;border:0;background:#fff;transition:height .15s}
+.webbox .webnote{font-size:12px;color:var(--ink-3);padding:6px 12px;border-top:1px solid var(--rule);background:var(--card)}
+.webadd{margin-top:16px;padding-top:14px;border-top:1px dashed var(--rule)}
+.webadd .row{display:flex;gap:8px;align-items:flex-end}
+.webadd .row .field{flex:1;margin-bottom:0}
+.webadd .quick{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.webadd .quick b{font-size:13px}
+.roomsw{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden;margin-right:6px}
+.roomsw button{border:0;background:#fff;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--ink-2)}
+.roomsw button+button{border-left:1px solid var(--rule)}
+.roomsw button.on{background:var(--steel);color:#fff}
 .attach{display:flex;align-items:center;gap:10px;border:1px solid var(--rule);background:var(--card);
   border-radius:8px;padding:12px 14px;margin-bottom:10px}
 .attach .ic{width:34px;height:34px;flex:0 0 34px;border-radius:6px;background:var(--steel-soft);
@@ -376,7 +396,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V59</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V61</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -449,7 +469,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V59
+   活動專卷 V61
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -740,6 +760,36 @@ function kindOf(f){
   return "file";
 }
 
+/* ---------- 即時網頁嵌入（例：Gurus 出席一覽表） ---------- */
+function withParams(u,extra){
+  try{ const x=new URL(u,location.href); Object.entries(extra).forEach(([k,v])=>x.searchParams.set(k,v)); return x.href; }
+  catch(e){ return u; }
+}
+const embedUrl=(u,fit=true)=>withParams(u,fit?{view:"1",embed:"1",fit:"1"}:{view:"1",embed:"1"});
+const gurusBase=()=>(doc&&doc.gurusBase)||new URL("gurus.html",location.href).href.split("?")[0];
+const roomOf=u=>{ try{ return new URL(u).searchParams.get("room")||"1"; }catch(e){ return "1"; } };
+const isGurus=u=>/gurus/i.test(u||"");
+const webViewUrl=u=>withParams(u,{view:"1"});
+/* 放大：全螢幕原尺寸，可左右捲動、手機可雙指縮放 */
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-webzoom]"); if(!b) return;
+  const f=fileById(b.dataset.webzoom); if(!f) return;
+  const w=document.createElement("div"); w.className="webfull";
+  w.innerHTML='<div class="wf-hd"><b>'+esc(f.label||f.name)+'</b><span>可左右捲動，手機可橫放</span>'+
+    '<button class="btn" data-wfclose>關閉</button></div><iframe src="'+esc(embedUrl(f.url,false))+'"></iframe>';
+  document.body.appendChild(w); document.body.style.overflow="hidden";
+  const close=()=>{ w.remove(); document.body.style.overflow=""; document.removeEventListener("keydown",esc_); };
+  const esc_=ev=>{ if(ev.key==="Escape") close(); };
+  w.querySelector("[data-wfclose]").onclick=close;
+  document.addEventListener("keydown",esc_);
+});
+window.addEventListener("message",e=>{
+  const d=e.data; if(!d||d.type!=="gurus-height"||!(d.h>0)) return;
+  document.querySelectorAll("iframe[data-web]").forEach(fr=>{
+    if(fr.contentWindow===e.source) fr.style.height=Math.min(Math.max(d.h,80),20000)+"px";
+  });
+});
+
 /* ---------- PDF ---------- */
 const pdfCache=new Map();
 function getPdf(f){
@@ -929,11 +979,14 @@ async function renderView(){
       if(g) html+='<div class="grp-hd" style="--c:'+c+'"><span class="ic">📁</span>'+esc(g)+"</div>";
     }
     html+='<div class="file-cap" id="cap-'+f.id+'" style="--c:'+c+'"><span class="fnum">'+(i+1)+"/"+vf.length+"</span><b>"+
-          (f.num?esc(f.num)+"　":"")+esc(f.label||f.name)+"</b><i>"+kb(f.size)+
+          (f.num?esc(f.num)+"　":"")+esc(f.label||f.name)+"</b><i>"+(f.kind==="web"?"即時同步":kb(f.size))+
           (f.kind==="pdf"?"　共 "+f.pages+" 頁":"")+"</i>"+
-          '<button class="btn dl-one" data-dl="'+f.id+'" title="只下載這一份原始檔（'+esc(f.name)+'）">下載這份</button>'+
+          (f.kind==="web"?'<a class="btn dl-one" href="'+esc(webViewUrl(f.url))+'" target="_blank" rel="noopener" style="text-decoration:none">開新視窗</a>':'')+
+          (f.kind==="web"?'':'<button class="btn dl-one" data-dl="'+f.id+'" title="只下載這一份原始檔（'+esc(f.name)+'）">下載這份</button>')+
           "</div>";
-    if(f.kind==="pdf") html+='<div class="pages" data-pdf="'+f.id+'"></div>';
+    if(f.kind==="web") html+='<div class="webbox"><button class="webzoom" data-webzoom="'+f.id+'">放大</button><iframe data-web="'+f.id+'" src="'+esc(embedUrl(f.url))+'" loading="lazy" title="'+esc(f.label||f.name)+'" style="height:260px"></iframe>'+
+         '<div class="webnote">即時畫面，Gurus 改了這裡就跟著更新；下載 PDF 不含這一區。</div></div>';
+    else if(f.kind==="pdf") html+='<div class="pages" data-pdf="'+f.id+'"></div>';
     else if(f.kind==="image") html+='<div class="pages"><div class="page" id="pg-'+f.id+'-1" data-img="'+f.id+'"><div class="ph" style="height:200px"></div></div></div>';
     else html+='<div class="attach"><div class="ic">'+esc((f.name.split(".").pop()||"檔").slice(0,4).toUpperCase())+
          '</div><div class="tx"><b>'+esc(f.name)+"</b><span>"+kb(f.size)+
@@ -1503,6 +1556,20 @@ function renderAdmin(){
       <div class="bar" id="upBar"><i></i></div>
       <div class="note"><b>PowerPoint 和 Word 請先另存 PDF 再上傳。</b>
         瀏覽器沒辦法忠實還原 .pptx／.docx 的排版。</div>
+      <div class="webadd">
+        <div class="quick">
+          <b>快速加入 Gurus 出席一覽表：</b>
+          <button class="btn" data-gadd-room="1">＋ Room 1</button>
+          <button class="btn" data-gadd-room="2">＋ Room 2</button>
+        </div>
+        <label class="field"><span>Gurus 網址（跟專卷放同一個資料夾的話不用改）</span><input id="gurusBase" value="${esc(gurusBase())}"></label>
+        <p class="sub" style="margin:0 0 10px">或是嵌入其他即時網頁（例：Gurus 出席一覽表）。到 Gurus 按「🔗 複製 Room 檢視連結」，貼到這裡；會放進上面選的章節，前台只顯示、不能編輯，資料跟著 Gurus 同步。</p>
+        <div class="row">
+          <label class="field"><span>網址</span><input id="webUrl" placeholder="https://…/gurus.html?room=1&view=1"></label>
+          <label class="field" style="flex:0 0 180px"><span>顯示名稱</span><input id="webLabel" maxlength="18" placeholder="例：出席一覽表"></label>
+          <button class="btn" id="webAdd" style="flex:0 0 auto">加入</button>
+        </div>
+      </div>
       ${(()=>{const c=capacity();return `
       <div class="cap ${c.pct>70?"hot":c.pct>40?"warm":""}">
         <div class="capbar"><i style="width:${Math.min(100,c.pct).toFixed(1)}%"></i></div>
@@ -1559,10 +1626,10 @@ function renderAdmin(){
     if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
     if(!confirm("再確認一次：這個動作沒辦法復原。")) return;
     if(prompt('確定的話請輸入「清空」兩個字')!=="清空") return toast("已取消");
-    for(const f of allFiles()) await Store.delBlob(f);
+    for(const f of allFiles()) if(f.kind!=="web") await Store.delBlob(f);
     doc=blankDoc();activeSec=null;pdfCache.clear();
     await save();renderAdmin();renderView();toast("已清空")};
-  bindDrop(); renderSecList();
+  bindDrop(); bindWebAdd(); renderSecList();
 }
 
 const edVal=(o,k)=>edOn(o,k);
@@ -1641,7 +1708,7 @@ function renderSecList(){
         <div class="fitem ${edClass(f)}">
           <div class="fr1">
             <input class="numi" value="${esc(f.num||"")}" data-fnum="${f.id}" maxlength="10"
-                   placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":"檔"}"
+                   placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":f.kind==="web"?"網":"檔"}"
                    aria-label="編號" title="前台左側標籤上顯示的編號。留白就不顯示。">
             <input class="t" value="${esc(f.label||"")}" data-flabel="${f.id}" aria-label="顯示名稱" maxlength="18" placeholder="顯示名稱">
             <span class="edt">${EDITIONS.map(e=>`<button data-fed="${f.id}" data-k="${e.k}" class="${edVal(f,e.k)?"on":"off"}" title="這一份要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
@@ -1657,7 +1724,8 @@ function renderSecList(){
               ${s.folders.map(g=>`<option value="${esc(g.title)}" ${f.group===g.title?"selected":""}>${esc(g.title)}</option>`).join("")}
             </select>
             <label>跳到第 <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁"> 頁</label>
-            <span class="fn" title="${esc(f.name)}">${esc(f.name)}</span>
+            ${f.kind==="web"&&isGurus(f.url)?`<span class="roomsw" title="切換這一份顯示哪個 Room">${["1","2"].map(r=>`<button data-froom="${f.id}" data-r="${r}" class="${roomOf(f.url)===r?"on":""}">Room ${r}</button>`).join("")}</span>`:""}
+            <span class="fn" title="${esc(f.kind==="web"?f.url:f.name)}">${f.kind==="web"?"🔗 "+esc(f.url):esc(f.name)}</span>
           </div>
         </div>`).join("") : '<div class="lnone">這一章還沒有檔案</div>'}
     </div>`).join("");
@@ -1689,6 +1757,12 @@ function renderSecList(){
       return;
     }
     if(d.fed){ edToggle(fileById(d.fed),d.k); await save(); renderAdmin(); return; }
+    if(d.froom){
+      const f=fileById(d.froom); if(!f||roomOf(f.url)===d.r) return;
+      f.url=withParams(f.url,{room:d.r});
+      f.name=f.name.replace(/（Room \d）$/,"")+"（Room "+d.r+"）";
+      await save(); renderAdmin(); toast("「"+(f.label||f.name)+"」改成顯示 Room "+d.r); return;
+    }
     if(d.ged){
       const sec=secById(d.sid), g=(sec.folders||[]).find(x=>x.id===d.ged);
       if(g){ edToggle(g,d.k); await save(); renderAdmin();
@@ -1726,7 +1800,7 @@ function renderSecList(){
     }else if(d.fdel){
       const s=secOf(d.fdel),f=s.files.find(x=>x.id===d.fdel);
       if(!confirm("刪除「"+f.name+"」？")) return;
-      await Store.delBlob(f);
+      if(f.kind!=="web") await Store.delBlob(f);
       s.files=s.files.filter(x=>x.id!==d.fdel);
       pdfCache.delete(d.fdel);
     }else if(d.gadd){
@@ -1742,6 +1816,40 @@ function renderSecList(){
       s.folders=s.folders.filter(x=>x.id!==d.gdel);
     }else return;
     await save();renderAdmin();
+  };
+}
+
+function bindWebAdd(){
+  const b=$("#webAdd"); if(!b) return;
+  $("#gurusBase").onchange=async e=>{
+    const v=e.target.value.trim();
+    try{ new URL(v); }catch(err){ e.target.value=gurusBase(); return toast("網址格式不對"); }
+    doc.gurusBase=v.split("?")[0]; await save(); toast("已更新 Gurus 網址");
+  };
+  document.querySelectorAll("[data-gadd-room]").forEach(btn=>btn.onclick=async()=>{
+    const s=secById($("#fSec").value);
+    if(!s) return toast("先建立一個章節");
+    const room=btn.dataset.gaddRoom;
+    const url=withParams(($("#gurusBase").value.trim()||gurusBase()).split("?")[0],{room,view:"1"});
+    const eds={}; EDK.forEach(k=>eds[k]=true);
+    s.files.push({id:uid(),name:"出席一覽表（Room "+room+"）",label:"出席一覽表",num:"",kind:"web",url,size:0,pages:1,jump:1,eds});
+    if(await save()===false) return;
+    renderAdmin(); toast("已加入 Room "+room+" 出席一覽表到「"+s.title+"」");
+  });
+  b.onclick=async()=>{
+    const s=secById($("#fSec").value);
+    if(!s) return toast("先建立一個章節");
+    const raw=$("#webUrl").value.trim();
+    let u; try{ u=new URL(raw); }catch(e){ return toast("網址格式不對，請貼完整的 https:// 連結"); }
+    if(!/^https?:$/.test(u.protocol)) return toast("只接受 http／https 網址");
+    if(/gurus/i.test(u.pathname)&&!u.searchParams.get("room"))
+      if(!confirm("這個網址沒有指定 Room，會固定顯示 Room 1。\n建議到 Gurus 按「複製 Room 檢視連結」再貼。\n\n要照這樣加入嗎？")) return;
+    const eds={}; EDK.forEach(k=>eds[k]=true);
+    const label=$("#webLabel").value.trim()||"即時網頁";
+    const room=u.searchParams.get("room");
+    s.files.push({id:uid(),name:label+(room?"（Room "+room+"）":""),label,num:"",kind:"web",url:u.href,size:0,pages:1,jump:1,eds});
+    if(await save()===false) return;
+    renderAdmin(); toast("已加入「"+label+"」到「"+s.title+"」");
   };
 }
 
