@@ -398,7 +398,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V64</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V65</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -471,7 +471,7 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V64
+   活動專卷 V65
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -737,7 +737,7 @@ function statsFrontHTML(){
     return '<div class="stat-card"><div class="stat-num"><b>'+numFmt(s.cur)+"</b>"+
       (s.unit?'<span class="unit">'+esc(s.unit)+"</span>":"")+statArrow(s.cur,s.last)+"</div>"+
       '<div class="stat-label">'+esc(it.label)+"</div>"+
-      (s.last!==""?'<div class="stat-div"></div><div class="stat-last">去年 '+numFmt(s.last)+"</div>":"")+
+      (s.last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(s.last)+"</div>":"")+
       "</div>";
   }).join("");
   if(!cards) return "";
@@ -1604,7 +1604,7 @@ function renderAdmin(){
 
     <div class="panel">
       <h3>展覽數據</h3>
-      <p class="sub">填本屆數字，順便填去年同期數字，前台就會自動比較顯示箭頭：<span style="color:var(--danger)">▲紅色＝比去年高</span>、<span style="color:#2E7D4F">▼綠色＝比去年低</span>。本屆留空或填 0，前台就不顯示那一項；每一項也可以選要不要出現在處內版／Gurus 版。</p>
+      <p class="sub">填本屆數字，順便填上屆同期數字，前台就會自動比較顯示箭頭：<span style="color:var(--danger)">▲紅色＝比上屆高</span>、<span style="color:#2E7D4F">▼綠色＝比上屆低</span>。本屆留空或填 0，前台就不顯示那一項；每一項也可以選要不要出現在處內版／Gurus 版。</p>
       <div class="statgrid">
         ${STAT_ITEMS.map(it=>`
         <div class="statrow">
@@ -1612,7 +1612,7 @@ function renderAdmin(){
           <span class="edt">${EDITIONS.map(e=>`<button data-statk="${it.key}" data-k="${e.k}" class="${edVal(doc.stats[it.key],e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
           <label class="field"><span>本屆</span>
             <input id="fStat_${it.key}_cur" value="${esc(doc.stats[it.key].cur)}" inputmode="numeric"></label>
-          <label class="field"><span>去年</span>
+          <label class="field"><span>上屆</span>
             <input id="fStat_${it.key}_last" value="${esc(doc.stats[it.key].last)}" inputmode="numeric"></label>
         </div>`).join("")}
       </div>
