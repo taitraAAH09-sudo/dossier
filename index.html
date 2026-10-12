@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V67</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V68</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -424,7 +424,7 @@ button{cursor:pointer;border:0;background:none}
 <nav class="rail" id="rail" aria-label="專卷目錄"></nav>
 
 <main class="main" id="main">
-  <section id="viewPane"></section>
+  <section id="viewPane"><div class="loading" id="bootMsg">連線中…</div></section>
   <section id="adminPane" style="display:none"></section>
 </main>
 
@@ -478,7 +478,8 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V67
+   活動專卷 V68
+   V68：啟動每一步都有逾時，不再無聲空白；即時連線卡住時改用 REST 備援讀取
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
    資料存 Firebase Realtime Database（不需要 Cloud Storage／Blaze）
@@ -555,6 +556,33 @@ const edUrl=k=>viewUrl()+"?v="+k;
 
 const diag=[];
 function dg(k,state,msg){ diag.push({k,state,msg:String(msg)}); }
+const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>
+  setTimeout(()=>rej(new Error(what+"超過 "+Math.round(ms/1000)+" 秒沒有回應")),ms))]);
+function bootStep(t){ const el=document.getElementById("bootMsg"); if(el) el.textContent=t; console.log("[專卷] "+t); }
+/* 即時連線（WebSocket）被網路擋住時，Firebase 的 get() 會一直等、不會報錯。
+   這時改走一般 HTTPS（REST）讀取，大多數公司網路都會放行。 */
+let REST_MODE=false;
+async function restGet(path){
+  let q="";
+  try{ const u=fb&&fb.auth.currentUser; if(u) q="?auth="+encodeURIComponent(await u.getIdToken()); }catch(e){}
+  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json"+q),30000,"備援讀取");
+  if(!r.ok) throw new Error("備援讀取失敗 HTTP "+r.status+(r.status===401||r.status===403?"（PERMISSION_DENIED）":""));
+  return r.json();
+}
+async function cloudGet(path,ms){
+  if(REST_MODE) return restGet(path);
+  try{
+    const s=await withTimeout(fb.db.ref(path).get(),ms||12000,"資料庫即時連線");
+    return s.exists()?s.val():null;
+  }catch(e){
+    if(String(e.message).toUpperCase().includes("PERMISSION_DENIED")) throw e;
+    dg("即時連線",false,e.message+"，改用備援方式（HTTPS）讀取");
+    bootStep("即時連線沒回應，改用備援方式讀取…");
+    const v=await restGet(path); REST_MODE=true;
+    dg("備援讀取",true,"成功（這台裝置的網路擋住了即時連線，之後都用 HTTPS 讀）");
+    return v;
+  }
+}
 function paintDiag(){
   $("#diagBody").innerHTML=diag.map(d=>
     '<div class="dg"><span class="k">'+esc(d.k)+'</span><span class="v '+
@@ -637,12 +665,17 @@ async function initCloud(){
     s.onerror=()=>rej(new Error("載不到 "+src.split("/").pop()+"（網路被擋，或公司防火牆擋掉 gstatic.com）"));
     document.head.appendChild(s)});
   const base="https://www.gstatic.com/firebasejs/10.12.2/";
-  await load(base+"firebase-app-compat.js");
-  await load(base+"firebase-auth-compat.js");
-  await load(base+"firebase-database-compat.js");
+  bootStep("載入 Firebase 套件…");
+  await withTimeout(load(base+"firebase-app-compat.js"),15000,"載入 firebase-app");
+  await withTimeout(load(base+"firebase-auth-compat.js"),15000,"載入 firebase-auth");
+  await withTimeout(load(base+"firebase-database-compat.js"),15000,"載入 firebase-database");
   firebase.initializeApp(FIREBASE_CONFIG);
   fb={auth:firebase.auth(),db:firebase.database()};
-  if(!fb.auth.currentUser) await fb.auth.signInAnonymously();
+  bootStep("取得訪客身分…");
+  if(!fb.auth.currentUser){
+    try{ await withTimeout(fb.auth.signInAnonymously(),15000,"匿名登入"); }
+    catch(e){ dg("匿名登入",false,((e&&e.code)||"")+" "+((e&&e.message)||e)+"（先不登入，直接試讀資料）"); }
+  }
 }
 const isAdminUser=()=>{
   const u=fb&&fb.auth.currentUser;
@@ -662,7 +695,7 @@ function b64ToBytes(b64){
 
 const Store={
   async loadDoc(){
-    if(CLOUD){const s=await fb.db.ref(DB_ROOT+"/meta").get();return s.exists()?s.val():null}
+    if(CLOUD){ bootStep("讀取專卷內容…"); return cloudGet(DB_ROOT+"/meta",12000); }
     return idb("kv","readonly",s=>s.get("doc"));
   },
   async saveDoc(d){
@@ -687,9 +720,8 @@ const Store={
   async getBytes(f){
     if(f.kind==="web") return (await getSnap(f)).bytes;   // 即時網頁：用當下擷取的畫面
     if(CLOUD){
-      const s=await fb.db.ref(DB_ROOT+"/blobs/"+f.id).get();
-      if(!s.exists()) throw new Error("雲端上找不到這個檔案");
-      const p=s.val();
+      const p=await cloudGet(DB_ROOT+"/blobs/"+f.id,30000);
+      if(!p) throw new Error("雲端上找不到這個檔案");
       return b64ToBytes(Object.keys(p).sort().map(k=>p[k]).join(""));
     }
     const b=await idb("blobs","readonly",s=>s.get(f.id));
@@ -2092,7 +2124,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V38");
+  dg("版本","","V68");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -2128,7 +2160,7 @@ $("#verBadge").onclick=()=>{
         dg("要做的事","","被資料庫規則擋住。Realtime Database → 規則，確認 dossier 節點的 .read 有放行已登入使用者。");
       throw e;
     }
-    if(!doc||!Array.isArray(doc.sections)){doc=blankDoc();await save()}
+    if(!doc||!Array.isArray(doc.sections)) doc=blankDoc();   // 前台不寫入；離線時寫入會一直卡住
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
     ensureStats();
     watchCloud();
