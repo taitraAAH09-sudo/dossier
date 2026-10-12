@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V68</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V69</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -478,7 +478,8 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V68
+   活動專卷 V69
+   V69：Firebase 登入卡住時，前台改用 REST 自行取得匿名憑證讀資料，不再卡在「取得身分」
    V68：啟動每一步都有逾時，不再無聲空白；即時連線卡住時改用 REST 備援讀取
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
    一次只載入目前章節，切過的留在記憶體
@@ -561,12 +562,31 @@ const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>
 function bootStep(t){ const el=document.getElementById("bootMsg"); if(el) el.textContent=t; console.log("[專卷] "+t); }
 /* 即時連線（WebSocket）被網路擋住時，Firebase 的 get() 會一直等、不會報錯。
    這時改走一般 HTTPS（REST）讀取，大多數公司網路都會放行。 */
-let REST_MODE=false;
-async function restGet(path){
-  let q="";
-  try{ const u=fb&&fb.auth.currentUser; if(u) q="?auth="+encodeURIComponent(await u.getIdToken()); }catch(e){}
-  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json"+q),30000,"備援讀取");
-  if(!r.ok) throw new Error("備援讀取失敗 HTTP "+r.status+(r.status===401||r.status===403?"（PERMISSION_DENIED）":""));
+let REST_MODE=false, REST_TOKEN=null;
+/* 不經過 Firebase 套件，直接跟 Google 要一張匿名憑證（1 小時有效，存在這台裝置重複用）。
+   套件的登入卡住（瀏覽器本機儲存異常、外掛干擾等）時，前台靠這個照樣能讀。 */
+async function restAnonToken(fresh){
+  if(!fresh){
+    if(REST_TOKEN) return REST_TOKEN;
+    try{ const c=JSON.parse(localStorage.getItem("dossierAnon")||"null");
+      if(c&&c.t&&c.exp>Date.now()+60000){ REST_TOKEN=c.t; return c.t; } }catch(e){}
+  }
+  const r=await withTimeout(fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+FIREBASE_CONFIG.apiKey,
+    {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({returnSecureToken:true})}),15000,"備援驗證");
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error("備援驗證失敗："+((j.error&&j.error.message)||("HTTP "+r.status)));
+  REST_TOKEN=j.idToken;
+  try{ localStorage.setItem("dossierAnon",JSON.stringify({t:j.idToken,exp:Date.now()+(+j.expiresIn||3600)*1000})); }catch(e){}
+  return REST_TOKEN;
+}
+async function restGet(path,retried){
+  let tok=null;
+  if(!REST_MODE){ try{ const u=fb&&fb.auth.currentUser;
+    if(u) tok=await withTimeout(u.getIdToken(),5000,"取得憑證"); }catch(e){} }
+  if(!tok) tok=await restAnonToken(retried);
+  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok)),30000,"備援讀取");
+  if((r.status===401||r.status===403)&&!retried){ REST_TOKEN=null; return restGet(path,true); }  // 憑證過期就換一張
+  if(!r.ok) throw new Error("備援讀取失敗 HTTP "+r.status+(r.status===401||r.status===403?"（PERMISSION_DENIED，資料庫規則擋住）":""));
   return r.json();
 }
 async function cloudGet(path,ms){
@@ -671,10 +691,16 @@ async function initCloud(){
   await withTimeout(load(base+"firebase-database-compat.js"),15000,"載入 firebase-database");
   firebase.initializeApp(FIREBASE_CONFIG);
   fb={auth:firebase.auth(),db:firebase.database()};
-  bootStep("取得訪客身分…");
+  bootStep("連線驗證中…");
   if(!fb.auth.currentUser){
-    try{ await withTimeout(fb.auth.signInAnonymously(),15000,"匿名登入"); }
-    catch(e){ dg("匿名登入",false,((e&&e.code)||"")+" "+((e&&e.message)||e)+"（先不登入，直接試讀資料）"); }
+    try{ await withTimeout(fb.auth.signInAnonymously(),8000,"Firebase 登入"); }
+    catch(e){
+      dg("Firebase 登入",false,((e&&e.code)||"")+" "+((e&&e.message)||e)+"（改用備援驗證）");
+      bootStep("改用備援方式連線…");
+      await restAnonToken();          // 這裡再失敗才算真的連不上，錯誤會顯示在畫面上
+      REST_MODE=true;
+      dg("備援驗證",true,"成功，前台改用 HTTPS 讀取");
+    }
   }
 }
 const isAdminUser=()=>{
@@ -1591,7 +1617,7 @@ function clearStale(){
 }
 /* 一直掛著聽，不用等你切回這個分頁 */
 function watchCloud(){
-  if(!CLOUD||!fb) return;
+  if(!CLOUD||!fb||REST_MODE) return;   // 備援模式沒有即時連線，靠切回分頁時的 checkFresh 檢查
   try{
     fb.db.ref(DB_ROOT+"/meta/updated").on("value",snap=>{
       const t=snap.val();
@@ -1603,7 +1629,7 @@ function watchCloud(){
 async function checkFresh(){
   if(!CLOUD||!fb||!doc||STALE) return;
   try{
-    const t=(await fb.db.ref(DB_ROOT+"/meta/updated").get()).val();
+    const t=await cloudGet(DB_ROOT+"/meta/updated",8000);
     if(t&&doc.updated&&t!==doc.updated) markStale(t);
   }catch(e){}
 }
@@ -2124,7 +2150,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V68");
+  dg("版本","","V69");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
