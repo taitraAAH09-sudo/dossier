@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V69</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V70</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -478,7 +478,8 @@ button{cursor:pointer;border:0;background:none}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V69
+   活動專卷 V70
+   V70：前台完全不載入 Firebase 套件，直接用 HTTPS 讀資料，打開不用等登入；套件只在進後台時才載入
    V69：Firebase 登入卡住時，前台改用 REST 自行取得匿名憑證讀資料，不再卡在「取得身分」
    V68：啟動每一步都有逾時，不再無聲空白；即時連線卡住時改用 REST 備援讀取
    兩層導覽：左側先列章節（資料夾），點進去後左側換成該章節的檔案，可返回
@@ -562,7 +563,7 @@ const withTimeout=(p,ms,what)=>Promise.race([p,new Promise((_,rej)=>
 function bootStep(t){ const el=document.getElementById("bootMsg"); if(el) el.textContent=t; console.log("[專卷] "+t); }
 /* 即時連線（WebSocket）被網路擋住時，Firebase 的 get() 會一直等、不會報錯。
    這時改走一般 HTTPS（REST）讀取，大多數公司網路都會放行。 */
-let REST_MODE=false, REST_TOKEN=null;
+let REST_MODE=true, REST_TOKEN=null;   // 前台預設走 HTTPS；後台登入成功才切到即時連線
 /* 不經過 Firebase 套件，直接跟 Google 要一張匿名憑證（1 小時有效，存在這台裝置重複用）。
    套件的登入卡住（瀏覽器本機儲存異常、外掛干擾等）時，前台靠這個照樣能讀。 */
 async function restAnonToken(fresh){
@@ -678,30 +679,26 @@ function idb(store,mode,fn){
 
 /* ---------- Firebase ---------- */
 let fb=null;
-async function initCloud(){
-  if(!CLOUD) return;
+/* Firebase 套件只有進後台時才載入。前台完全用不到它，也就不會被它卡住。 */
+let sdkP=null;
+function ensureSdk(){
+  if(!CLOUD) return Promise.resolve();
+  if(fb) return Promise.resolve();
+  if(sdkP) return sdkP;
   const load=src=>new Promise((res,rej)=>{const s=document.createElement("script");
     s.src=src;s.onload=res;
     s.onerror=()=>rej(new Error("載不到 "+src.split("/").pop()+"（網路被擋，或公司防火牆擋掉 gstatic.com）"));
     document.head.appendChild(s)});
   const base="https://www.gstatic.com/firebasejs/10.12.2/";
-  bootStep("載入 Firebase 套件…");
-  await withTimeout(load(base+"firebase-app-compat.js"),15000,"載入 firebase-app");
-  await withTimeout(load(base+"firebase-auth-compat.js"),15000,"載入 firebase-auth");
-  await withTimeout(load(base+"firebase-database-compat.js"),15000,"載入 firebase-database");
-  firebase.initializeApp(FIREBASE_CONFIG);
-  fb={auth:firebase.auth(),db:firebase.database()};
-  bootStep("連線驗證中…");
-  if(!fb.auth.currentUser){
-    try{ await withTimeout(fb.auth.signInAnonymously(),8000,"Firebase 登入"); }
-    catch(e){
-      dg("Firebase 登入",false,((e&&e.code)||"")+" "+((e&&e.message)||e)+"（改用備援驗證）");
-      bootStep("改用備援方式連線…");
-      await restAnonToken();          // 這裡再失敗才算真的連不上，錯誤會顯示在畫面上
-      REST_MODE=true;
-      dg("備援驗證",true,"成功，前台改用 HTTPS 讀取");
-    }
-  }
+  sdkP=(async()=>{
+    await withTimeout(load(base+"firebase-app-compat.js"),15000,"載入 firebase-app");
+    await withTimeout(load(base+"firebase-auth-compat.js"),15000,"載入 firebase-auth");
+    await withTimeout(load(base+"firebase-database-compat.js"),15000,"載入 firebase-database");
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    fb={auth:firebase.auth(),db:firebase.database()};
+    dg("Firebase 套件",true,"後台用，已載入");
+  })().catch(e=>{ sdkP=null; throw e; });
+  return sdkP;
 }
 const isAdminUser=()=>{
   const u=fb&&fb.auth.currentUser;
@@ -1616,8 +1613,14 @@ function clearStale(){
   $("#stamp").classList.remove("stale"); paintStamp();
 }
 /* 一直掛著聽，不用等你切回這個分頁 */
+let pollT=null, liveOn=false;
 function watchCloud(){
-  if(!CLOUD||!fb||REST_MODE) return;   // 備援模式沒有即時連線，靠切回分頁時的 checkFresh 檢查
+  if(!CLOUD) return;
+  /* 前台：每 60 秒問一次雲端的更新時間（只抓一個數字，幾乎不耗流量），切回分頁時也會馬上問 */
+  if(!pollT) pollT=setInterval(()=>{ if(!document.hidden) checkFresh(); },60000);
+  /* 後台：登入後改用即時監聽，別人一存檔馬上知道，避免互相蓋掉 */
+  if(!fb||REST_MODE||liveOn) return;
+  liveOn=true;
   try{
     fb.db.ref(DB_ROOT+"/meta/updated").on("value",snap=>{
       const t=snap.val();
@@ -1627,7 +1630,7 @@ function watchCloud(){
   }catch(e){}
 }
 async function checkFresh(){
-  if(!CLOUD||!fb||!doc||STALE) return;
+  if(!CLOUD||!doc||STALE) return;
   try{
     const t=await cloudGet(DB_ROOT+"/meta/updated",8000);
     if(t&&doc.updated&&t!==doc.updated) markStale(t);
@@ -1769,7 +1772,7 @@ function renderAdmin(){
   };
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
-    so.onclick=async()=>{ await fb.auth.signOut(); await fb.auth.signInAnonymously();
+    so.onclick=async()=>{ try{ await fb.auth.signOut(); }catch(e){} REST_MODE=true;
       toast("已登出，回到前台"); setMode(false); }; }
   $("#wipe").onclick=async()=>{
     if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
@@ -2112,11 +2115,15 @@ $("#pwOk").onclick=async()=>{
     if(!new RegExp("^\\d{"+PIN_LEN+"}$").test(pin)){
       btn.disabled=false; return toast("請輸入 "+PIN_LEN+" 位數字");
     }
-    await fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL, pin+PIN_SUFFIX);
-    if(!isAdminUser()){await fb.auth.signOut();await fb.auth.signInAnonymously();
+    toast("登入中…",20000);
+    await ensureSdk();
+    await withTimeout(fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL, pin+PIN_SUFFIX),15000,
+      "後台登入（這個瀏覽器的本機儲存可能卡住了：F12 → Application → IndexedDB → 刪除 firebaseLocalStorageDb 後再試）");
+    if(!isAdminUser()){await fb.auth.signOut();
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
     adminRevealed=true;$("#segMode").style.display="";
+    REST_MODE=false; watchCloud();
     setMode(true);toast("已登入後台");
   }catch(err){
     const c=err.code||"", typed=$("#pwInput").value||"你的四碼";
@@ -2150,7 +2157,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V69");
+  dg("版本","","V70");
   dg("網址","",location.href.slice(0,90));
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
@@ -2161,21 +2168,7 @@ $("#verBadge").onclick=()=>{
     dg("執行模式",true,"雲端模式 → "+FIREBASE_CONFIG.projectId);
   }
   try{
-    if(CLOUD){
-      try{
-        await initCloud();
-        dg("Firebase 載入",true,"SDK 就緒");
-        const u=fb.auth.currentUser;
-        dg("登入身分", !!u, !u ? "沒有取得身分"
-            : u.isAnonymous ? "匿名（前台正常狀態）"
-            : "管理者 "+u.email);
-      }catch(e){
-        dg("Firebase 載入",false,[(e&&e.code)||"",(e&&e.message)||String(e)].filter(Boolean).join(" "));
-        if(e&&String(e.code||"").includes("operation-not-allowed"))
-          dg("要做的事","","Authentication → Sign-in method，把「匿名」打開。");
-        throw e;
-      }
-    }
+    if(CLOUD) dg("讀取方式",true,"前台直接用 HTTPS 讀，不載入 Firebase 套件");
     try{
       doc=await Store.loadDoc();
       dg("讀取資料",true, doc? "成功" : "成功（雲端上還沒有內容）");
