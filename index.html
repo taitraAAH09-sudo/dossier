@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V72</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V73</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -476,7 +476,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V72
+   活動專卷 V73
+   V73：後台登入時先花最多 5 秒測即時連線，不通就整段改走 HTTPS，不再每個動作都先空等 12～30 秒
    V72：後台存檔／上傳加上逾時，即時連線寫不進去就改用 HTTPS 寫入；「重新存檔」按下去會顯示存檔中與結果
    V71：PDF 元件改成需要時才載入，cdnjs 載不到自動改用 jsDelivr，不再整頁空白；上傳中離開頁面會先提醒，每傳完一份就先存檔
    V70：前台完全不載入 Firebase 套件，直接用 HTTPS 讀資料，打開不用等登入；套件只在進後台時才載入
@@ -631,7 +632,8 @@ async function cloudGet(path,ms){
     if(String(e.message).toUpperCase().includes("PERMISSION_DENIED")) throw e;
     dg("即時連線",false,e.message+"，改用備援方式（HTTPS）讀取");
     bootStep("即時連線沒回應，改用備援方式讀取…");
-    const v=await restGet(path); REST_MODE=true;
+    const v=await restGet(path); REST_MODE=true; WRITE_REST=true;
+    try{ fb.db.goOffline(); }catch(_){}
     dg("備援讀取",true,"成功（這台裝置的網路擋住了即時連線，之後都用 HTTPS 讀）");
     return v;
   }
@@ -748,6 +750,26 @@ function b64ToBytes(b64){
   return out;
 }
 
+/* 後台登入後先測一次即時連線：5 秒內連上就用即時連線（存檔快、別人改過會馬上知道）；
+   連不上就整段改走 HTTPS，之後每個動作都不用再先空等 */
+async function probeLive(){
+  const ok=await new Promise(res=>{
+    let done=false; const ref=fb.db.ref(".info/connected");
+    const cb=snap=>{ if(snap.val()===true&&!done){ done=true; ref.off("value",cb); res(true); } };
+    ref.on("value",cb);
+    setTimeout(()=>{ if(!done){ done=true; ref.off("value",cb); res(false); } },5000);
+  });
+  if(ok){
+    REST_MODE=false; WRITE_REST=false;
+    dg("即時連線",true,"後台已連上");
+  }else{
+    REST_MODE=true; WRITE_REST=true;
+    try{ fb.db.goOffline(); }catch(_){}
+    dg("即時連線",false,"5 秒內連不上，後台改用 HTTPS 讀寫（功能一樣，別人改過的提醒改成每 60 秒檢查）");
+  }
+  watchCloud();
+  return ok;
+}
 /* ---------- 後台寫入 ----------
    先用即時連線寫；12 秒沒回應就改用 HTTPS 寫，並把即時連線關掉，
    避免卡在佇列裡的舊資料之後才送出去，把新的蓋掉。 */
@@ -2204,7 +2226,8 @@ $("#pwOk").onclick=async()=>{
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
     adminRevealed=true;$("#segMode").style.display="";
-    REST_MODE=false; watchCloud();
+    toast("檢查連線中…",8000);
+    await probeLive();
     setMode(true);toast("已登入後台");
   }catch(err){
     const c=err.code||"", typed=$("#pwInput").value||"你的四碼";
@@ -2238,7 +2261,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V72");
+  dg("版本","","V73");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
