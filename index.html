@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V70</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V71</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -474,11 +474,10 @@ button{cursor:pointer;border:0;background:none}
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ============================================================
-   活動專卷 V70
+   活動專卷 V71
+   V71：PDF 元件改成需要時才載入，cdnjs 載不到自動改用 jsDelivr，不再整頁空白；上傳中離開頁面會先提醒，每傳完一份就先存檔
    V70：前台完全不載入 Firebase 套件，直接用 HTTPS 讀資料，打開不用等登入；套件只在進後台時才載入
    V69：Firebase 登入卡住時，前台改用 REST 自行取得匿名憑證讀資料，不再卡在「取得身分」
    V68：啟動每一步都有逾時，不再無聲空白；即時連線卡住時改用 REST 備援讀取
@@ -542,8 +541,40 @@ const stripNum=t=>String(t||"").replace(/^\s*\d+\s*[.、．\-_)]*\s*/,"");
 const secTitle=(s,i)=>doc.autoNumber===false?s.title
   :String(i+1).padStart(2,"0")+". "+stripNum(s.title);
 
-pdfjsLib.GlobalWorkerOptions.workerSrc=
-  "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+/* ---------- PDF 元件：需要時才載入，主來源載不到就換備用來源 ----------
+   以前是寫死在頁面開頭載入，cdnjs 一被擋，後面整段程式都不會跑，畫面就整個空白。 */
+function loadScript(src){
+  return new Promise((res,rej)=>{const s=document.createElement("script");
+    s.src=src;s.onload=res;s.onerror=()=>rej(new Error("載不到 "+src.split("/").pop()));
+    document.head.appendChild(s)});
+}
+const LIBS={
+  pdfjs:{name:"PDF 顯示元件",test:()=>window.pdfjsLib,
+    srcs:["https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
+          "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"],
+    after:src=>{ pdfjsLib.GlobalWorkerOptions.workerSrc=src.replace("pdf.min.js","pdf.worker.min.js"); }},
+  pdflib:{name:"PDF 合併元件",test:()=>window.PDFLib,
+    srcs:["https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js",
+          "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"]}
+};
+const libP={};
+function needLib(k){
+  if(libP[k]) return libP[k];
+  const L=LIBS[k];
+  libP[k]=(async()=>{
+    if(L.test()) return;
+    let last=null;
+    for(const src of L.srcs){
+      try{
+        await withTimeout(loadScript(src),15000,"載入 "+src.split("/").pop());
+        if(L.test()){ if(L.after) L.after(src);
+          dg(L.name,true,"來源 "+new URL(src).host); return; }
+      }catch(e){ last=e; dg(L.name,false,e.message+"，換下一個來源"); }
+    }
+    throw new Error(L.name+"載入失敗（"+((last&&last.message)||"")+"），請換個網路或稍後重新整理");
+  })().catch(e=>{ libP[k]=null; throw e; });
+  return libP[k];
+}
 
 let adminRevealed=false, admin=false;
 const $=s=>document.querySelector(s);
@@ -935,7 +966,9 @@ window.addEventListener("message",e=>{
 const pdfCache=new Map();
 function getPdf(f){
   if(!pdfCache.has(f.id))
-    pdfCache.set(f.id, Store.getBytes(f).then(b=>pdfjsLib.getDocument({data:b}).promise));
+    pdfCache.set(f.id, Promise.all([needLib("pdfjs"),Store.getBytes(f)])
+      .then(([,b])=>pdfjsLib.getDocument({data:b}).promise)
+      .catch(e=>{ pdfCache.delete(f.id); throw e; }));   // 失敗不要留在快取，下次還能重試
   return pdfCache.get(f.id);
 }
 const io=new IntersectionObserver(es=>{
@@ -1565,6 +1598,7 @@ async function mergePdf(section){
   const btn=section?$("#btnSecPdf"):$("#btnMerge");
   const label=btn.textContent; btn.disabled=true; btn.textContent="整理中…";
   try{
+    await needLib("pdflib");
     const {PDFDocument,StandardFonts,rgb}=PDFLib;
     const out=await PDFDocument.create(); let skipped=0;
     for(const f of files){
@@ -2021,6 +2055,8 @@ async function handleFiles(files){
   files.sort((a,b)=>natCmp(a.name,b.name));
   const bar=$("#upBar"),fill=bar.querySelector("i");bar.classList.add("on");
   let n=0,ok=0,warned=false;const errs=[];
+  UPLOADING++;
+  try{
   for(const file of files){
     const kind=kindOf(file);
     if(/\.(pptx?|docx?)$/i.test(file.name)&&!warned){warned=true;toast("PowerPoint／Word 會存成附件，建議先另存 PDF")}
@@ -2029,6 +2065,7 @@ async function handleFiles(files){
       let pages=1;
       if(kind==="pdf"){
         const buf=new Uint8Array(await file.arrayBuffer());
+        await needLib("pdfjs");
         pages=(await pdfjsLib.getDocument({data:buf.slice()}).promise).numPages;
       }
       await Store.putBlob(id,file,pct=>{fill.style.width=((n+pct)/files.length*100)+"%"});
@@ -2036,10 +2073,12 @@ async function handleFiles(files){
       const eds={}; EDK.forEach(k=>eds[k]=true);   // 新上傳預設兩版都顯示，之後再關掉不要的
       s.files.push({id,name:file.name,label:p.label,num:p.num,kind,size:file.size,pages,jump:1,eds});
       ok++;
+      /* 每傳完一份就先存檔：中途斷線或關掉分頁，已經傳好的不會白傳 */
+      if(await save()===false) errs.push(file.name+"：檔案已上傳，但清單沒存進雲端，請按「重新存檔」");
     }catch(err){errs.push(file.name+"："+err.message)}
     fill.style.width=(++n/files.length*100)+"%";
   }
-  if(ok>0){try{await save()}catch(err){errs.push("存檔失敗："+err.message)}}
+  }finally{ UPLOADING--; }
   setTimeout(()=>{bar.classList.remove("on");fill.style.width="0"},500);
   renderAdmin();
   if(errs.length){
@@ -2049,6 +2088,11 @@ async function handleFiles(files){
   }
 }
 
+/* 上傳或存檔還沒完成就要關分頁／重新整理時，先跳出瀏覽器的確認視窗 */
+let UPLOADING=0, SAVING=0;
+addEventListener("beforeunload",e=>{
+  if(UPLOADING>0||SAVING>0){ e.preventDefault(); e.returnValue=""; return ""; }
+});
 async function save(){
   /* 手上是舊的就先問過再寫，問過一次就記住，不會每打一個字跳一次 */
   if(STALE&&!overwriteOK){
@@ -2056,6 +2100,7 @@ async function save(){
     if(!yes){ toast("這次沒有存檔。請按 F5 重新整理，拿到最新版再改",6000); return false; }
     overwriteOK=true;
   }
+  SAVING++;
   try{
     await Store.saveDoc(doc); paintStamp();
     /* 存完回頭問雲端一次：對不上就是這次沒寫進去，不要讓後台自己以為存好了 */
@@ -2068,6 +2113,7 @@ async function save(){
     }
     return true;
   }catch(err){toast("存檔失敗："+err.message,6000); return false}
+  finally{ SAVING--; }
 }
 
 /* ---------- 模式 ---------- */
@@ -2157,8 +2203,9 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V70");
+  dg("版本","","V71");
   dg("網址","",location.href.slice(0,90));
+  needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
       ? "直接開本機檔案（file://）。這樣手機和電腦是兩份不同的檔案，要放到網路上才會是同一份。"
       : location.protocol.replace(":",""));
