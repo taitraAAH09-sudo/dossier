@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V71</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V72</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -476,7 +476,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V71
+   活動專卷 V72
+   V72：後台存檔／上傳加上逾時，即時連線寫不進去就改用 HTTPS 寫入；「重新存檔」按下去會顯示存檔中與結果
    V71：PDF 元件改成需要時才載入，cdnjs 載不到自動改用 jsDelivr，不再整頁空白；上傳中離開頁面會先提醒，每傳完一份就先存檔
    V70：前台完全不載入 Firebase 套件，直接用 HTTPS 讀資料，打開不用等登入；套件只在進後台時才載入
    V69：Firebase 登入卡住時，前台改用 REST 自行取得匿名憑證讀資料，不再卡在「取得身分」
@@ -747,6 +748,36 @@ function b64ToBytes(b64){
   return out;
 }
 
+/* ---------- 後台寫入 ----------
+   先用即時連線寫；12 秒沒回應就改用 HTTPS 寫，並把即時連線關掉，
+   避免卡在佇列裡的舊資料之後才送出去，把新的蓋掉。 */
+let WRITE_REST=false;
+async function adminToken(){
+  const u=fb&&fb.auth.currentUser;
+  if(!u||u.isAnonymous) throw new Error("後台登入已失效，請重新整理後再登入");
+  return withTimeout(u.getIdToken(),10000,"取得後台憑證");
+}
+async function restWrite(method,path,data){
+  const tok=await adminToken();
+  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok),
+    {method,headers:{"Content-Type":"application/json"},body:data===undefined?undefined:JSON.stringify(data)}),60000,"HTTPS 寫入");
+  if(!r.ok) throw new Error("寫入失敗 HTTP "+r.status+(r.status===401||r.status===403?"（沒有寫入權限，請重新登入）":""));
+}
+async function cloudWrite(kind,path,data){
+  const method={set:"PUT",update:"PATCH",remove:"DELETE"}[kind];
+  if(WRITE_REST||!fb||REST_MODE) return restWrite(method,path,data);
+  const ref=fb.db.ref(path);
+  const op=kind==="set"?ref.set(data):kind==="update"?ref.update(data):ref.remove();
+  try{ await withTimeout(op,12000,"即時連線寫入"); }
+  catch(e){
+    if(String(e.message).toUpperCase().includes("PERMISSION_DENIED")) throw e;
+    WRITE_REST=true; REST_MODE=true;
+    try{ fb.db.goOffline(); }catch(_){}
+    dg("後台寫入",false,e.message+"，改用 HTTPS 寫入（這次登入期間都走 HTTPS）");
+    toast("即時連線沒回應，改用備援方式存檔…",4000);
+    await restWrite(method,path,data);
+  }
+}
 const Store={
   async loadDoc(){
     if(CLOUD){ bootStep("讀取專卷內容…"); return cloudGet(DB_ROOT+"/meta",12000); }
@@ -754,7 +785,7 @@ const Store={
   },
   async saveDoc(d){
     d.updated=Date.now();
-    if(CLOUD) return fb.db.ref(DB_ROOT+"/meta").set(d);
+    if(CLOUD) return cloudWrite("set",DB_ROOT+"/meta",d);
     return idb("kv","readwrite",s=>s.put(d,"doc"));
   },
   async putBlob(id,blob,onPct){
@@ -764,7 +795,7 @@ const Store={
       const keys=Object.keys(parts),BATCH=8;
       for(let i=0;i<keys.length;i+=BATCH){
         const slice={};keys.slice(i,i+BATCH).forEach(k=>slice[k]=parts[k]);
-        await fb.db.ref(DB_ROOT+"/blobs/"+id).update(slice);
+        await cloudWrite("update",DB_ROOT+"/blobs/"+id,slice);
         if(onPct) onPct(Math.min(1,(i+BATCH)/keys.length));
       }
       return;
@@ -783,7 +814,7 @@ const Store={
     return new Uint8Array(await b.arrayBuffer());
   },
   async delBlob(f){
-    if(CLOUD) return fb.db.ref(DB_ROOT+"/blobs/"+f.id).remove();
+    if(CLOUD) return cloudWrite("remove",DB_ROOT+"/blobs/"+f.id);
     return idb("blobs","readwrite",s=>s.delete(f.id));
   }
 };
@@ -1800,9 +1831,13 @@ function renderAdmin(){
   $("#addSec").onclick=()=>{
     doc.sections.push({id:uid(),title:(doc.sections.length+1)+" 新章節",files:[],folders:[]});
     save();renderAdmin()};
-  $("#forceSave").onclick=async()=>{
-    if(await save())
-      toast("已存檔，雲端確認更新於 "+stampFmt(doc.updated)+"。前台重新整理就會拿到這一份。",5000);
+  $("#forceSave").onclick=async e=>{
+    const b=e.currentTarget, t=b.textContent;
+    b.disabled=true; b.textContent="存檔中…"; toast("存檔中…",30000);
+    try{
+      if(await save())
+        toast("✓ 已存檔，雲端確認更新於 "+stampFmt(doc.updated)+"。前台重新整理就會拿到這一份。",5000);
+    }finally{ b.disabled=false; b.textContent=t; }
   };
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
@@ -2105,7 +2140,7 @@ async function save(){
     await Store.saveDoc(doc); paintStamp();
     /* 存完回頭問雲端一次：對不上就是這次沒寫進去，不要讓後台自己以為存好了 */
     if(CLOUD){
-      const t=(await fb.db.ref(DB_ROOT+"/meta/updated").get()).val();
+      const t=await cloudGet(DB_ROOT+"/meta/updated",10000);
       if(t!==doc.updated){
         toast("⚠ 這次沒存進雲端（後台 "+stampFmt(doc.updated)+"／雲端 "+stampFmt(t)+"），按「重新存檔」再寫一次",6000);
         return false;
@@ -2203,7 +2238,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V71");
+  dg("版本","","V72");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
