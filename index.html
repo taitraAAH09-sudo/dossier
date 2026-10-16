@@ -405,7 +405,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V73</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V74</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -476,7 +476,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V73
+   活動專卷 V74
+   V74：展覽數據多一格「刷進人數」：後台設展期天數、每天填日期與人數，前台只顯示合計，並跟上屆比較
    V73：後台登入時先花最多 5 秒測即時連線，不通就整段改走 HTTPS，不再每個動作都先空等 12～30 秒
    V72：後台存檔／上傳加上逾時，即時連線寫不進去就改用 HTTPS 寫入；「重新存檔」按下去會顯示存檔中與結果
    V71：PDF 元件改成需要時才載入，cdnjs 載不到自動改用 jsDelivr，不再整頁空白；上傳中離開頁面會先提醒，每傳完一份就先存檔
@@ -862,6 +863,16 @@ function ensureStats(){
       doc.stats[it.key]={cur:"",last:""};
     doc.stats[it.key].unit=it.unit;   // 單位固定，不開放後台編輯
   });
+  const v=doc.stats.visitors;
+  if(!v||typeof v!=="object") doc.stats.visitors={days:[],last:""};
+  if(!Array.isArray(doc.stats.visitors.days)) doc.stats.visitors.days=[];
+}
+/* 刷進人數：每天一格，合計自動加總 */
+function visitTotal(v){
+  let sum=0,any=false;
+  (v&&v.days||[]).forEach(d=>{ const n=Number(String(d.n||"").replace(/,/g,""));
+    if(String(d.n||"").trim()!==""&&!isNaN(n)){ sum+=n; any=true; } });
+  return any?String(sum):"";
 }
 function numFmt(v){
   if(v===""||v==null) return "";
@@ -894,8 +905,20 @@ function statsFrontHTML(){
       (s.last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(s.last)+"</div>":"")+
       "</div>";
   }).join("");
-  if(!cards) return "";
-  return '<div class="stats-cards">'+cards+"</div>";
+  let vcard="";
+  const v=doc.stats.visitors;
+  if(v&&edOn(v,EDITION)){
+    const tot=visitTotal(v);
+    if(tot!==""&&Number(tot)!==0){
+      const days=v.days.filter(d=>String(d.n||"").trim()!=="");
+      const rng=days.length?(days[0].date||"")+(days.length>1&&days[days.length-1].date?"–"+days[days.length-1].date:""):"";
+      vcard='<div class="stat-card"><div class="stat-num"><b>'+numFmt(tot)+'</b><span class="unit">人</span>'+statDelta(tot,v.last)+"</div>"+
+        '<div class="stat-label">刷進人數（'+v.days.length+" 天"+(rng?"，"+esc(rng):"")+"）</div>"+
+        (v.last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(v.last)+"</div>":"")+"</div>";
+    }
+  }
+  if(!cards&&!vcard) return "";
+  return '<div class="stats-cards">'+cards+vcard+"</div>";
 }
 const secById=id=>doc.sections.find(s=>s.id===id);
 const secColor=s=>COLORS[doc.sections.indexOf(s)%COLORS.length];
@@ -1778,7 +1801,24 @@ function renderAdmin(){
           <label class="field"><span>上屆</span>
             <input id="fStat_${it.key}_last" value="${esc(doc.stats[it.key].last)}" inputmode="numeric"></label>
         </div>`).join("")}
+        <div class="statrow" style="align-items:flex-start">
+          <span class="statname">刷進人數<i>（單位：人，不重複計算）</i></span>
+          <span class="edt">${EDITIONS.map(e=>`<button data-statk="visitors" data-k="${e.k}" class="${edVal(doc.stats.visitors,e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+          <label class="field"><span>展期天數</span>
+            <input id="fVisDays" type="number" min="0" max="14" value="${doc.stats.visitors.days.length}"></label>
+          <label class="field"><span>上屆合計</span>
+            <input id="fVisLast" value="${esc(doc.stats.visitors.last)}" inputmode="numeric"></label>
+          <div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
+            ${doc.stats.visitors.days.map((d,i)=>`
+            <div style="display:flex;flex-direction:column;gap:4px;width:110px">
+              <input data-vdate="${i}" value="${esc(d.date||"")}" placeholder="第${i+1}天 日期" style="border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px">
+              <input data-vn="${i}" value="${esc(d.n||"")}" inputmode="numeric" placeholder="人數" style="border:1px solid var(--rule);border-radius:7px;padding:6px 8px;font-size:14px;font-weight:600">
+            </div>`).join("")}
+            <div style="font-size:13px;color:var(--ink-2);padding:0 0 8px 6px">合計 <b id="fVisTot" style="font-size:17px;color:var(--ink)">${numFmt(visitTotal(doc.stats.visitors))||"—"}</b> 人</div>
+          </div>
+        </div>
       </div>
+      <p class="sub" style="margin:10px 0 0">刷進人數：先填展期天數，每天會長出一格「日期＋人數」。日期隨你打（例 10/23）。前台只顯示合計，跟上屆合計比較。</p>
     </div>
 
     <div class="panel">
@@ -1846,6 +1886,23 @@ function renderAdmin(){
     $("#fStat_"+it.key+"_cur").oninput=e=>{doc.stats[it.key].cur=e.target.value;save()};
     $("#fStat_"+it.key+"_last").oninput=e=>{doc.stats[it.key].last=e.target.value;save()};
   });
+  { const v=doc.stats.visitors;
+    $("#fVisDays").onchange=e=>{
+      const n=clamp(parseInt(e.target.value,10)||0,0,14);
+      while(v.days.length<n) v.days.push({date:"",n:""});
+      if(n<v.days.length){
+        const lost=v.days.slice(n).filter(d=>String(d.n||"").trim()!=="").length;
+        if(lost&&!confirm("減少天數會刪掉後面 "+lost+" 天已填的人數，確定嗎？")){ e.target.value=v.days.length; return; }
+        v.days.length=n;
+      }
+      save(); renderAdmin();
+    };
+    $("#fVisLast").oninput=e=>{v.last=e.target.value;save()};
+    $("#adminPane").querySelectorAll("[data-vdate]").forEach(el=>el.oninput=()=>{v.days[+el.dataset.vdate].date=el.value.trim();save()});
+    $("#adminPane").querySelectorAll("[data-vn]").forEach(el=>el.oninput=()=>{
+      v.days[+el.dataset.vn].n=el.value.replace(/[^\d]/g,""); if(el.value!==v.days[+el.dataset.vn].n) el.value=v.days[+el.dataset.vn].n;
+      $("#fVisTot").textContent=numFmt(visitTotal(v))||"—"; save()});
+  }
   $("#adminPane").querySelectorAll("[data-statk]").forEach(b=>b.onclick=async()=>{
     edToggle(doc.stats[b.dataset.statk],b.dataset.k);
     await save(); renderAdmin();
@@ -2261,7 +2318,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V73");
+  dg("版本","","V74");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
