@@ -121,14 +121,25 @@ button{cursor:pointer;border:0;background:none}
 .stat-delta.down{color:#2E7D4F;background:#E9F3EC;border-color:#CFE4D6}
 .stat-delta.flat{color:var(--ink-3);background:#F2F1EC;border-color:var(--rule)}
 .stat-card.wide{flex:0 1 460px;min-width:300px}
-.vdays{display:flex;margin-top:10px;border-top:1px solid var(--rule)}
-.vdays>div{flex:1;min-width:0;text-align:center;padding:7px 2px 0;border-right:1px solid var(--rule);display:flex;flex-direction:column;align-items:center;gap:1px}
-.vdays>div:last-child{border-right:0}
-.vdays .vdt{font-size:12px;color:var(--ink-3)}
-.vdays b{font-size:16px;font-weight:700;color:var(--ink)}
-.vd{font-size:11px;font-weight:700;line-height:1.4}
-.vd.up{color:var(--danger)}.vd.down{color:#2E7D4F}.vd.flat{color:var(--ink-3)}
+.vdays{display:flex;gap:6px;margin-top:12px}
+.vcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px 9px;
+  border-radius:8px;background:#F7F6F2}
+.vcol.peak{background:#FDF1E2;box-shadow:inset 0 0 0 1px #F0CFA2}
+.vdt{font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:4px}
+.vdt em{font-style:normal;font-size:10px;font-weight:700;color:#fff;background:#E38B29;border-radius:4px;padding:0 4px;line-height:1.5}
+.vcol b{font-size:17px;font-weight:750;color:var(--ink);letter-spacing:.01em}
+.vbar{display:flex;align-items:flex-end;gap:3px;height:46px;box-sizing:border-box;margin:3px 0 4px;border-bottom:1px solid #D9D6CC;padding:0 2px}
+.vbar i{display:block;width:12px;border-radius:2px 2px 0 0}
+.vbar i.now,.vleg i.now{background:#E38B29}
+.vbar i.ly,.vleg i.ly{background:#C9C6BE}
+.vd{font-size:11.5px;font-weight:700;line-height:1.4;padding:0 6px;border-radius:999px}
+.vd.up{color:var(--danger);background:#FBEDEA}.vd.down{color:#2E7D4F;background:#E9F3EC}.vd.flat{color:var(--ink-3);background:#EFEDE7}
 .vly{font-size:11px;color:var(--ink-3)}
+.vfoot{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vdiff{font-size:12px;font-weight:700}
+.vdiff.up{color:var(--danger)}.vdiff.down{color:#2E7D4F}
+.vleg{margin-left:auto;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--ink-3)}
+.vleg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-left:6px}
 .statgrid{display:flex;flex-direction:column;gap:8px}
 .statrow{display:flex;align-items:center;flex-wrap:wrap;gap:16px;
   padding:10px 14px;background:#FCFBF8;border:1px solid var(--rule);border-radius:9px}
@@ -405,8 +416,12 @@ button{cursor:pointer;border:0;background:none}
   .stat-div{margin:6px 0 4px}
   .stat-last{font-size:9.5px}
   .stat-card.wide{grid-column:1/-1;min-width:0}
-  .vdays b{font-size:14px}
-  .vdays .vdt,.vd,.vly{font-size:10px}
+  .vdays{gap:4px}
+  .vcol{padding:6px 2px 7px}
+  .vcol b{font-size:14px}
+  .vbar{height:32px}.vbar i{width:8px}
+  .vdt,.vd,.vly,.vleg,.vdiff{font-size:10px}
+  .vdt em{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -417,7 +432,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V75</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V76</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -488,7 +503,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V75
+   活動專卷 V76
+   V76：刷進人數卡片改版：每天加今年／去年對照小長條、人最多那天標出來、底部顯示比去年多（少）幾人
    V75：刷進人數改成加寬卡片，每天的人數都列出來；後台可填去年每天的人數，前台逐日跟去年比，去年合計自動加總
    V74：展覽數據多一格「刷進人數」：後台設展期天數、每天填日期與人數，前台只顯示合計，並跟上屆比較
    V73：後台登入時先花最多 5 秒測即時連線，不通就整段改走 HTTPS，不再每個動作都先空等 12～30 秒
@@ -935,18 +951,32 @@ function statsFrontHTML(){
     const tot=visitTotal(v), last=visitLast(v);
     if(tot!==""&&Number(tot)!==0){
       const ld=v.lastDays||[];
+      const N=x=>{const n=Number(String(x==null?"":x).replace(/,/g,""));return String(x==null?"":x).trim()===""||isNaN(n)?null:n;};
+      const vals=v.days.map(d=>N(d.n)), lvals=v.days.map((d,i)=>N((ld[i]||{}).n));
+      const mx=Math.max(1,...vals.filter(x=>x!=null),...lvals.filter(x=>x!=null));
+      const peak=vals.reduce((p,x,i)=>x!=null&&(p<0||x>vals[p])?i:p,-1);
+      const hasLast=lvals.some(x=>x!=null);
       const cols=v.days.map((d,i)=>{
-        const L=ld[i]||{}, has=String(d.n||"").trim()!=="";
-        return '<div><span class="vdt">'+esc(d.date||("第"+(i+1)+"天"))+"</span>"+
-          '<b>'+(has?numFmt(d.n):"—")+"</b>"+
-          (String(L.n||"").trim()!==""?dayDelta(d.n,L.n)+'<span class="vly" title="去年第'+(i+1)+'天'+(L.date?"（"+esc(L.date)+"）":"")+'">去年 '+numFmt(L.n)+"</span>":"")+
+        const c=vals[i], l=lvals[i], L=ld[i]||{};
+        const h=x=>x==null?0:Math.max(6,Math.round(x/mx*100));
+        return '<div class="vcol'+(i===peak&&vals.filter(x=>x!=null).length>1?" peak":"")+'">'+
+          '<span class="vdt">'+esc(d.date||("第"+(i+1)+"天"))+(i===peak&&vals.filter(x=>x!=null).length>1?'<em>最多</em>':"")+"</span>"+
+          '<b>'+(c!=null?numFmt(c):"—")+"</b>"+
+          '<span class="vbar" title="今年 '+(c!=null?numFmt(c):"—")+(l!=null?"／去年 "+numFmt(l):"")+'">'+
+            '<i class="now" style="height:'+h(c)+'%"></i>'+(hasLast?'<i class="ly" style="height:'+h(l)+'%"></i>':"")+"</span>"+
+          (l!=null?dayDelta(c==null?"":c,l)+'<span class="vly" title="去年第'+(i+1)+'天'+(L.date?"（"+esc(L.date)+"）":"")+'">去年 '+numFmt(l)+"</span>"
+                  :(hasLast?'<span class="vly">去年無</span>':""))+
           "</div>";
       }).join("");
+      let diff="";
+      if(last!==""){ const dn=Number(tot)-Number(String(last).replace(/,/g,""));
+        if(!isNaN(dn)&&dn!==0) diff='<span class="vdiff '+(dn>0?"up":"down")+'">'+(dn>0?"多 ":"少 ")+Math.abs(dn).toLocaleString("en-US")+" 人</span>"; }
       vcard='<div class="stat-card wide"><div class="stat-num"><b>'+numFmt(tot)+'</b><span class="unit">人</span>'+statDelta(tot,last)+"</div>"+
         '<div class="stat-label">刷進人數（'+v.days.length+" 天）</div>"+
         '<div class="vdays">'+cols+"</div>"+
-        (last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(last)+
-          (ld.length&&ld.length!==v.days.length?"（"+ld.length+" 天）":"")+"</div>":"")+"</div>";
+        (last!==""?'<div class="stat-div"></div><div class="vfoot"><span class="stat-last">上屆 '+numFmt(last)+
+          (ld.length&&ld.length!==v.days.length?"（"+ld.length+" 天）":"")+"</span>"+diff+
+          (hasLast?'<span class="vleg"><i class="now"></i>今年<i class="ly"></i>去年</span>':"")+"</div>":"")+"</div>";
     }
   }
   if(!cards&&!vcard) return "";
@@ -2358,7 +2388,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V75");
+  dg("版本","","V76");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
