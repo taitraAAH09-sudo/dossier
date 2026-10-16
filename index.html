@@ -120,6 +120,15 @@ button{cursor:pointer;border:0;background:none}
 .stat-delta.up{color:var(--danger);background:#FBEDEA;border-color:#EFD6D1}
 .stat-delta.down{color:#2E7D4F;background:#E9F3EC;border-color:#CFE4D6}
 .stat-delta.flat{color:var(--ink-3);background:#F2F1EC;border-color:var(--rule)}
+.stat-card.wide{flex:0 1 460px;min-width:300px}
+.vdays{display:flex;margin-top:10px;border-top:1px solid var(--rule)}
+.vdays>div{flex:1;min-width:0;text-align:center;padding:7px 2px 0;border-right:1px solid var(--rule);display:flex;flex-direction:column;align-items:center;gap:1px}
+.vdays>div:last-child{border-right:0}
+.vdays .vdt{font-size:12px;color:var(--ink-3)}
+.vdays b{font-size:16px;font-weight:700;color:var(--ink)}
+.vd{font-size:11px;font-weight:700;line-height:1.4}
+.vd.up{color:var(--danger)}.vd.down{color:#2E7D4F}.vd.flat{color:var(--ink-3)}
+.vly{font-size:11px;color:var(--ink-3)}
 .statgrid{display:flex;flex-direction:column;gap:8px}
 .statrow{display:flex;align-items:center;flex-wrap:wrap;gap:16px;
   padding:10px 14px;background:#FCFBF8;border:1px solid var(--rule);border-radius:9px}
@@ -395,6 +404,9 @@ button{cursor:pointer;border:0;background:none}
   .stat-label{font-size:10.5px;margin-top:1px}
   .stat-div{margin:6px 0 4px}
   .stat-last{font-size:9.5px}
+  .stat-card.wide{grid-column:1/-1;min-width:0}
+  .vdays b{font-size:14px}
+  .vdays .vdt,.vd,.vly{font-size:10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -405,7 +417,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V74</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V75</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -476,7 +488,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V74
+   活動專卷 V75
+   V75：刷進人數改成加寬卡片，每天的人數都列出來；後台可填去年每天的人數，前台逐日跟去年比，去年合計自動加總
    V74：展覽數據多一格「刷進人數」：後台設展期天數、每天填日期與人數，前台只顯示合計，並跟上屆比較
    V73：後台登入時先花最多 5 秒測即時連線，不通就整段改走 HTTPS，不再每個動作都先空等 12～30 秒
    V72：後台存檔／上傳加上逾時，即時連線寫不進去就改用 HTTPS 寫入；「重新存檔」按下去會顯示存檔中與結果
@@ -866,13 +879,24 @@ function ensureStats(){
   const v=doc.stats.visitors;
   if(!v||typeof v!=="object") doc.stats.visitors={days:[],last:""};
   if(!Array.isArray(doc.stats.visitors.days)) doc.stats.visitors.days=[];
+  if(!Array.isArray(doc.stats.visitors.lastDays)) doc.stats.visitors.lastDays=[];
 }
 /* 刷進人數：每天一格，合計自動加總 */
-function visitTotal(v){
+function visitTotal(v,key){
   let sum=0,any=false;
-  (v&&v.days||[]).forEach(d=>{ const n=Number(String(d.n||"").replace(/,/g,""));
+  (v&&v[key||"days"]||[]).forEach(d=>{ const n=Number(String(d.n||"").replace(/,/g,""));
     if(String(d.n||"").trim()!==""&&!isNaN(n)){ sum+=n; any=true; } });
   return any?String(sum):"";
+}
+/* 去年合計：有填去年每天的人數就自動加總，沒有就用手動填的上屆合計 */
+const visitLast=v=>visitTotal(v,"lastDays")||String(v.last||"");
+function dayDelta(cur,last){
+  const c=Number(String(cur||"").replace(/,/g,"")), l=Number(String(last||"").replace(/,/g,""));
+  if(String(cur||"").trim()===""||String(last||"").trim()===""||isNaN(c)||isNaN(l)) return "";
+  if(c===l) return '<span class="vd flat">持平</span>';
+  if(l===0) return '<span class="vd '+(c>l?"up":"down")+'">新增</span>';
+  const p=Math.abs((c-l)/l*100), t=(p>=10?p.toFixed(0):p.toFixed(1)).replace(/\.0$/,"");
+  return '<span class="vd '+(c>l?"up":"down")+'">'+(c>l?"▲":"▼")+t+"%</span>";
 }
 function numFmt(v){
   if(v===""||v==null) return "";
@@ -908,13 +932,21 @@ function statsFrontHTML(){
   let vcard="";
   const v=doc.stats.visitors;
   if(v&&edOn(v,EDITION)){
-    const tot=visitTotal(v);
+    const tot=visitTotal(v), last=visitLast(v);
     if(tot!==""&&Number(tot)!==0){
-      const days=v.days.filter(d=>String(d.n||"").trim()!=="");
-      const rng=days.length?(days[0].date||"")+(days.length>1&&days[days.length-1].date?"–"+days[days.length-1].date:""):"";
-      vcard='<div class="stat-card"><div class="stat-num"><b>'+numFmt(tot)+'</b><span class="unit">人</span>'+statDelta(tot,v.last)+"</div>"+
-        '<div class="stat-label">刷進人數（'+v.days.length+" 天"+(rng?"，"+esc(rng):"")+"）</div>"+
-        (v.last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(v.last)+"</div>":"")+"</div>";
+      const ld=v.lastDays||[];
+      const cols=v.days.map((d,i)=>{
+        const L=ld[i]||{}, has=String(d.n||"").trim()!=="";
+        return '<div><span class="vdt">'+esc(d.date||("第"+(i+1)+"天"))+"</span>"+
+          '<b>'+(has?numFmt(d.n):"—")+"</b>"+
+          (String(L.n||"").trim()!==""?dayDelta(d.n,L.n)+'<span class="vly" title="去年第'+(i+1)+'天'+(L.date?"（"+esc(L.date)+"）":"")+'">去年 '+numFmt(L.n)+"</span>":"")+
+          "</div>";
+      }).join("");
+      vcard='<div class="stat-card wide"><div class="stat-num"><b>'+numFmt(tot)+'</b><span class="unit">人</span>'+statDelta(tot,last)+"</div>"+
+        '<div class="stat-label">刷進人數（'+v.days.length+" 天）</div>"+
+        '<div class="vdays">'+cols+"</div>"+
+        (last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(last)+
+          (ld.length&&ld.length!==v.days.length?"（"+ld.length+" 天）":"")+"</div>":"")+"</div>";
     }
   }
   if(!cards&&!vcard) return "";
@@ -1804,21 +1836,23 @@ function renderAdmin(){
         <div class="statrow" style="align-items:flex-start">
           <span class="statname">刷進人數<i>（單位：人，不重複計算）</i></span>
           <span class="edt">${EDITIONS.map(e=>`<button data-statk="visitors" data-k="${e.k}" class="${edVal(doc.stats.visitors,e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
-          <label class="field"><span>展期天數</span>
-            <input id="fVisDays" type="number" min="0" max="14" value="${doc.stats.visitors.days.length}"></label>
-          <label class="field"><span>上屆合計</span>
-            <input id="fVisLast" value="${esc(doc.stats.visitors.last)}" inputmode="numeric"></label>
-          <div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end">
-            ${doc.stats.visitors.days.map((d,i)=>`
-            <div style="display:flex;flex-direction:column;gap:4px;width:110px">
-              <input data-vdate="${i}" value="${esc(d.date||"")}" placeholder="第${i+1}天 日期" style="border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px">
-              <input data-vn="${i}" value="${esc(d.n||"")}" inputmode="numeric" placeholder="人數" style="border:1px solid var(--rule);border-radius:7px;padding:6px 8px;font-size:14px;font-weight:600">
+          ${[["days","今年"],["lastDays","去年"]].map(([key,nm])=>`
+          <div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;${key==="lastDays"?"padding-top:10px;border-top:1px dashed var(--rule)":""}">
+            <label class="field" style="flex:0 0 96px;margin:0"><span>${nm}天數</span>
+              <input data-vcount="${key}" type="number" min="0" max="14" value="${doc.stats.visitors[key].length}"></label>
+            ${doc.stats.visitors[key].map((d,i)=>`
+            <div style="display:flex;flex-direction:column;gap:4px;width:104px">
+              <input data-vk="${key}" data-vdate="${i}" value="${esc(d.date||"")}" placeholder="第${i+1}天 日期" style="border:1px solid var(--rule);border-radius:7px;padding:5px 8px;font-size:12.5px">
+              <input data-vk="${key}" data-vn="${i}" value="${esc(d.n||"")}" inputmode="numeric" placeholder="${nm}人數" style="border:1px solid var(--rule);border-radius:7px;padding:6px 8px;font-size:14px;font-weight:600${key==="lastDays"?";background:#F7F6F2":""}">
             </div>`).join("")}
-            <div style="font-size:13px;color:var(--ink-2);padding:0 0 8px 6px">合計 <b id="fVisTot" style="font-size:17px;color:var(--ink)">${numFmt(visitTotal(doc.stats.visitors))||"—"}</b> 人</div>
-          </div>
+            <div style="font-size:13px;color:var(--ink-2);padding:0 0 8px 6px">${nm}合計 <b data-vtot="${key}" style="font-size:17px;color:var(--ink)">${numFmt(visitTotal(doc.stats.visitors,key))||"—"}</b> 人</div>
+          </div>`).join("")}
+          ${doc.stats.visitors.lastDays.some(d=>String(d.n||"").trim()!=="")?"":`
+          <label class="field" style="flex:0 0 160px;margin-top:8px"><span>去年只有總數的話填這裡</span>
+            <input id="fVisLast" value="${esc(doc.stats.visitors.last)}" inputmode="numeric"></label>`}
         </div>
       </div>
-      <p class="sub" style="margin:10px 0 0">刷進人數：先填展期天數，每天會長出一格「日期＋人數」。日期隨你打（例 10/23）。前台只顯示合計，跟上屆合計比較。</p>
+      <p class="sub" style="margin:10px 0 0">刷進人數：填天數就會長出每天的「日期＋人數」格子。去年也照樣填，前台每天下面會顯示跟去年同一天（第 1 天比第 1 天）的增減和去年人數，總數跟去年合計比。去年沒有分日數字，就只填總數。</p>
     </div>
 
     <div class="panel">
@@ -1886,22 +1920,28 @@ function renderAdmin(){
     $("#fStat_"+it.key+"_cur").oninput=e=>{doc.stats[it.key].cur=e.target.value;save()};
     $("#fStat_"+it.key+"_last").oninput=e=>{doc.stats[it.key].last=e.target.value;save()};
   });
-  { const v=doc.stats.visitors;
-    $("#fVisDays").onchange=e=>{
-      const n=clamp(parseInt(e.target.value,10)||0,0,14);
-      while(v.days.length<n) v.days.push({date:"",n:""});
-      if(n<v.days.length){
-        const lost=v.days.slice(n).filter(d=>String(d.n||"").trim()!=="").length;
-        if(lost&&!confirm("減少天數會刪掉後面 "+lost+" 天已填的人數，確定嗎？")){ e.target.value=v.days.length; return; }
-        v.days.length=n;
+  { const v=doc.stats.visitors, P=$("#adminPane");
+    P.querySelectorAll("[data-vcount]").forEach(el=>el.onchange=()=>{
+      const arr=v[el.dataset.vcount], n=clamp(parseInt(el.value,10)||0,0,14);
+      while(arr.length<n) arr.push({date:"",n:""});
+      if(n<arr.length){
+        const lost=arr.slice(n).filter(d=>String(d.n||"").trim()!=="").length;
+        if(lost&&!confirm("減少天數會刪掉後面 "+lost+" 天已填的人數，確定嗎？")){ el.value=arr.length; return; }
+        arr.length=n;
       }
       save(); renderAdmin();
-    };
-    $("#fVisLast").oninput=e=>{v.last=e.target.value;save()};
-    $("#adminPane").querySelectorAll("[data-vdate]").forEach(el=>el.oninput=()=>{v.days[+el.dataset.vdate].date=el.value.trim();save()});
-    $("#adminPane").querySelectorAll("[data-vn]").forEach(el=>el.oninput=()=>{
-      v.days[+el.dataset.vn].n=el.value.replace(/[^\d]/g,""); if(el.value!==v.days[+el.dataset.vn].n) el.value=v.days[+el.dataset.vn].n;
-      $("#fVisTot").textContent=numFmt(visitTotal(v))||"—"; save()});
+    });
+    const fl=$("#fVisLast"); if(fl) fl.oninput=e=>{v.last=e.target.value;save()};
+    P.querySelectorAll("[data-vdate]").forEach(el=>el.oninput=()=>{v[el.dataset.vk][+el.dataset.vdate].date=el.value.trim();save()});
+    P.querySelectorAll("[data-vn]").forEach(el=>{
+      el.oninput=()=>{
+        const k=el.dataset.vk, d=v[k][+el.dataset.vn], clean=el.value.replace(/[^\d]/g,"");
+        if(el.value!==clean) el.value=clean;
+        d.n=clean;
+        P.querySelector('[data-vtot="'+k+'"]').textContent=numFmt(visitTotal(v,k))||"—"; save();
+      };
+      if(el.dataset.vk==="lastDays") el.onchange=()=>renderAdmin();   // 有沒有分日數字會決定要不要顯示「只填總數」那格
+    });
   }
   $("#adminPane").querySelectorAll("[data-statk]").forEach(b=>b.onclick=async()=>{
     edToggle(doc.stats[b.dataset.statk],b.dataset.k);
@@ -2318,7 +2358,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V74");
+  dg("版本","","V75");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
