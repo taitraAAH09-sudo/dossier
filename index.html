@@ -432,7 +432,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V76</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V77</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -503,7 +503,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V76
+   活動專卷 V77
+   V77：看過的檔案存在這台裝置，F5 重新整理只抓目錄比對；檔案沒換就用裝置上的，不再耗 Firebase 流量。下載整份 PDF 也共用同一份
    V76：刷進人數卡片改版：每天加今年／去年對照小長條、人最多那天標出來、底部顯示比去年多（少）幾人
    V75：刷進人數改成加寬卡片，每天的人數都列出來；後台可填去年每天的人數，前台逐日跟去年比，去年合計自動加總
    V74：展覽數據多一格「刷進人數」：後台設展期天數、每天填日期與人數，前台只顯示合計，並跟上屆比較
@@ -830,6 +831,25 @@ async function cloudWrite(kind,path,data){
     await restWrite(method,path,data);
   }
 }
+/* ---------- V77：檔案存在這台裝置 ---------- */
+const BYTES=new Map(), CACHE_PFX="cache:";
+const CSTAT={hit:0,hitB:0,miss:0,missB:0};
+function cacheCount(hit,n){
+  if(hit){CSTAT.hit++;CSTAT.hitB+=n}else{CSTAT.miss++;CSTAT.missB+=n}
+  const msg="裝置上 "+CSTAT.hit+" 份（"+kb(CSTAT.hitB)+"，不耗流量）／雲端下載 "+CSTAT.miss+" 份（"+kb(Math.round(CSTAT.missB*4/3))+"）";
+  const e=diag.find(d=>d.k==="檔案來源");
+  if(e) e.msg=msg; else dg("檔案來源",true,msg);
+}
+/* 後台已經刪掉或換掉的檔案，從這台裝置清掉，不要越存越多 */
+async function pruneCache(){
+  if(!CLOUD||!doc) return;
+  try{
+    const keep=new Set(allFiles().map(f=>CACHE_PFX+f.id));
+    const keys=await idb("blobs","readonly",s=>s.getAllKeys());
+    for(const k of keys) if(typeof k==="string"&&k.startsWith(CACHE_PFX)&&!keep.has(k))
+      await idb("blobs","readwrite",s=>s.delete(k));
+  }catch(e){}
+}
 const Store={
   async loadDoc(){
     if(CLOUD){ bootStep("讀取專卷內容…"); return cloudGet(DB_ROOT+"/meta",12000); }
@@ -850,6 +870,8 @@ const Store={
         await cloudWrite("update",DB_ROOT+"/blobs/"+id,slice);
         if(onPct) onPct(Math.min(1,(i+BATCH)/keys.length));
       }
+      // 上傳的人這台裝置本來就有這份檔案，順手存進來，之後不用再下載
+      try{ const ab=await blob.arrayBuffer(); await idb("blobs","readwrite",s=>s.put(ab,CACHE_PFX+id)); }catch(e){}
       return;
     }
     await idb("blobs","readwrite",s=>s.put(blob,id));
@@ -857,16 +879,31 @@ const Store={
   async getBytes(f){
     if(f.kind==="web") return (await getSnap(f)).bytes;   // 即時網頁：用當下擷取的畫面
     if(CLOUD){
-      const p=await cloudGet(DB_ROOT+"/blobs/"+f.id,30000);
-      if(!p) throw new Error("雲端上找不到這個檔案");
-      return b64ToBytes(Object.keys(p).sort().map(k=>p[k]).join(""));
+      /* V77：每次上傳都會拿到新的檔案編號，同一個編號的內容永遠不會變。
+         所以這台裝置抓過一次就存起來，之後直接用，不再跟 Firebase 要。
+         同一次打開裡，畫面、單檔下載、整份 PDF 也共用同一次下載。 */
+      if(!BYTES.has(f.id)){
+        const p=(async()=>{
+          const hit=await idb("blobs","readonly",s=>s.get(CACHE_PFX+f.id)).catch(()=>null);
+          if(hit&&hit.byteLength){ cacheCount(true,hit.byteLength); return new Uint8Array(hit); }
+          const r=await cloudGet(DB_ROOT+"/blobs/"+f.id,30000);
+          if(!r) throw new Error("雲端上找不到這個檔案");
+          const bytes=b64ToBytes(Object.keys(r).sort().map(k=>r[k]).join(""));
+          await idb("blobs","readwrite",s=>s.put(bytes.slice().buffer,CACHE_PFX+f.id)).catch(()=>{});  // 裝置空間不夠就算了，照樣顯示
+          cacheCount(false,bytes.byteLength);
+          return bytes;
+        })();
+        BYTES.set(f.id,p); p.catch(()=>BYTES.delete(f.id));
+      }
+      return (await BYTES.get(f.id)).slice();   // 給一份複本：pdf.js 會把收到的資料搬走，原本那份要留著共用
     }
     const b=await idb("blobs","readonly",s=>s.get(f.id));
     if(!b) throw new Error("找不到檔案");
     return new Uint8Array(await b.arrayBuffer());
   },
   async delBlob(f){
-    if(CLOUD) return cloudWrite("remove",DB_ROOT+"/blobs/"+f.id);
+    BYTES.delete(f.id);
+    if(CLOUD){ idb("blobs","readwrite",s=>s.delete(CACHE_PFX+f.id)).catch(()=>{}); return cloudWrite("remove",DB_ROOT+"/blobs/"+f.id); }
     return idb("blobs","readwrite",s=>s.delete(f.id));
   }
 };
@@ -2388,7 +2425,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V76");
+  dg("版本","","V77");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
@@ -2415,6 +2452,7 @@ $("#verBadge").onclick=()=>{
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
     ensureStats();
     watchCloud();
+    pruneCache();   // 背景清掉已經不在專卷裡的舊檔，不擋畫面
     EDITION=curEdition();
     dg("前台版本","", edName(EDITION)+"（?v="+EDITION+"）");
     dg("內容","", doc.sections.length+" 章 / "+allFiles().length+" 份（本版可見 "
