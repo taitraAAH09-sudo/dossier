@@ -432,7 +432,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V77</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V78</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -503,7 +503,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V77
+   活動專卷 V78
+   V78：後台登入改成直接用 HTTPS 跟 Google 驗證，不再經過 Firebase 套件，也不碰瀏覽器裡的 firebaseLocalStorageDb；那個資料庫卡住時照樣登得進去。存檔、上傳全部走 HTTPS，別人改過的提醒每 60 秒檢查一次
    V77：看過的檔案存在這台裝置，F5 重新整理只抓目錄比對；檔案沒換就用裝置上的，不再耗 Firebase 流量。下載整份 PDF 也共用同一份
    V76：刷進人數卡片改版：每天加今年／去年對照小長條、人最多那天標出來、底部顯示比去年多（少）幾人
    V75：刷進人數改成加寬卡片，每天的人數都列出來；後台可填去年每天的人數，前台逐日跟去年比，去年合計自動加總
@@ -646,7 +647,8 @@ async function restAnonToken(fresh){
 }
 async function restGet(path,retried){
   let tok=null;
-  if(!REST_MODE){ try{ const u=fb&&fb.auth.currentUser;
+  if(ADMIN_AUTH){ try{ tok=await adminToken(retried); }catch(e){} }
+  if(!tok&&!REST_MODE){ try{ const u=fb&&fb.auth.currentUser;
     if(u) tok=await withTimeout(u.getIdToken(),5000,"取得憑證"); }catch(e){} }
   if(!tok) tok=await restAnonToken(retried);
   const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok)),30000,"備援讀取");
@@ -765,7 +767,43 @@ function ensureSdk(){
   })().catch(e=>{ sdkP=null; throw e; });
   return sdkP;
 }
+/* ---------- V78：後台登入走 HTTPS，不經過 Firebase 套件 ---------- */
+let ADMIN_AUTH=null;   // {t:idToken, r:refreshToken, exp, email}
+const AUTH_ERR={INVALID_LOGIN_CREDENTIALS:"auth/invalid-credential",INVALID_PASSWORD:"auth/wrong-password",
+  EMAIL_NOT_FOUND:"auth/user-not-found",PASSWORD_LOGIN_DISABLED:"auth/operation-not-allowed",
+  OPERATION_NOT_ALLOWED:"auth/operation-not-allowed",TOO_MANY_ATTEMPTS_TRY_LATER:"auth/too-many-requests",
+  USER_DISABLED:"auth/user-disabled"};
+function keepAdmin(){ try{ ADMIN_AUTH?sessionStorage.setItem("dossierAdm",JSON.stringify(ADMIN_AUTH))
+  :sessionStorage.removeItem("dossierAdm"); }catch(e){} }
+function restoreAdmin(){
+  if(ADMIN_AUTH) return true;
+  try{ const a=JSON.parse(sessionStorage.getItem("dossierAdm")||"null"); if(a&&a.r){ ADMIN_AUTH=a; return true; } }catch(e){}
+  return false;
+}
+async function restSignIn(email,password){
+  const r=await withTimeout(fetch("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="+FIREBASE_CONFIG.apiKey,
+    {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email,password,returnSecureToken:true})}),
+    15000,"後台登入（連不到 identitytoolkit.googleapis.com，請換個網路再試）");
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){
+    const m=String((j.error&&j.error.message)||("HTTP "+r.status)), k=m.split(/[ :]/)[0];
+    const e=new Error(m); e.code=AUTH_ERR[k]||""; throw e;
+  }
+  ADMIN_AUTH={t:j.idToken,r:j.refreshToken,exp:Date.now()+(+j.expiresIn||3600)*1000,email:j.email||email};
+  keepAdmin();
+  dg("後台登入",true,"HTTPS 直接驗證成功（"+ADMIN_AUTH.email+"）");
+}
+async function refreshAdmin(){
+  const r=await withTimeout(fetch("https://securetoken.googleapis.com/v1/token?key="+FIREBASE_CONFIG.apiKey,
+    {method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},
+     body:"grant_type=refresh_token&refresh_token="+encodeURIComponent(ADMIN_AUTH.r)}),15000,"更新後台憑證");
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){ ADMIN_AUTH=null; keepAdmin(); throw new Error("後台登入已失效，請重新整理後再登入"); }
+  ADMIN_AUTH.t=j.id_token; ADMIN_AUTH.r=j.refresh_token||ADMIN_AUTH.r;
+  ADMIN_AUTH.exp=Date.now()+(+j.expires_in||3600)*1000; keepAdmin();
+}
 const isAdminUser=()=>{
+  if(ADMIN_AUTH) return ADMIN_EMAIL ? ADMIN_AUTH.email===ADMIN_EMAIL : true;
   const u=fb&&fb.auth.currentUser;
   if(!u||u.isAnonymous||!u.email) return false;
   return ADMIN_EMAIL ? u.email===ADMIN_EMAIL : true;
@@ -805,15 +843,20 @@ async function probeLive(){
    先用即時連線寫；12 秒沒回應就改用 HTTPS 寫，並把即時連線關掉，
    避免卡在佇列裡的舊資料之後才送出去，把新的蓋掉。 */
 let WRITE_REST=false;
-async function adminToken(){
+async function adminToken(force){
+  if(ADMIN_AUTH){
+    if(force||ADMIN_AUTH.exp<Date.now()+120000) await refreshAdmin();
+    return ADMIN_AUTH.t;
+  }
   const u=fb&&fb.auth.currentUser;
   if(!u||u.isAnonymous) throw new Error("後台登入已失效，請重新整理後再登入");
   return withTimeout(u.getIdToken(),10000,"取得後台憑證");
 }
-async function restWrite(method,path,data){
-  const tok=await adminToken();
+async function restWrite(method,path,data,retried){
+  const tok=await adminToken(retried);
   const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok),
     {method,headers:{"Content-Type":"application/json"},body:data===undefined?undefined:JSON.stringify(data)}),60000,"HTTPS 寫入");
+  if((r.status===401||r.status===403)&&!retried&&ADMIN_AUTH) return restWrite(method,path,data,true);
   if(!r.ok) throw new Error("寫入失敗 HTTP "+r.status+(r.status===401||r.status===403?"（沒有寫入權限，請重新登入）":""));
 }
 async function cloudWrite(kind,path,data){
@@ -2027,7 +2070,7 @@ function renderAdmin(){
   };
   const so=$("#signOut");
   if(so){ so.style.display=CLOUD?"":"none";
-    so.onclick=async()=>{ try{ await fb.auth.signOut(); }catch(e){} REST_MODE=true;
+    so.onclick=async()=>{ ADMIN_AUTH=null; keepAdmin(); try{ if(fb) await fb.auth.signOut(); }catch(e){} REST_MODE=true;
       toast("已登出，回到前台"); setMode(false); }; }
   $("#wipe").onclick=async()=>{
     if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
@@ -2383,15 +2426,13 @@ $("#pwOk").onclick=async()=>{
       btn.disabled=false; return toast("請輸入 "+PIN_LEN+" 位數字");
     }
     toast("登入中…",20000);
-    await ensureSdk();
-    await withTimeout(fb.auth.signInWithEmailAndPassword(INTERNAL_LOGIN_EMAIL, pin+PIN_SUFFIX),15000,
-      "後台登入（這個瀏覽器的本機儲存可能卡住了：F12 → Application → IndexedDB → 刪除 firebaseLocalStorageDb 後再試）");
-    if(!isAdminUser()){await fb.auth.signOut();
+    await restSignIn(INTERNAL_LOGIN_EMAIL, pin+PIN_SUFFIX);
+    if(!isAdminUser()){ ADMIN_AUTH=null; keepAdmin();
       throw new Error("這個帳號不在允許名單內")}
     $("#pwMask").classList.remove("on");$("#pwInput").value="";
     adminRevealed=true;$("#segMode").style.display="";
-    toast("檢查連線中…",8000);
-    await probeLive();
+    REST_MODE=true; WRITE_REST=true;   // 後台全程走 HTTPS，不載入 Firebase 套件
+    watchCloud();
     setMode(true);toast("已登入後台");
   }catch(err){
     const c=err.code||"", typed=$("#pwInput").value||"你的四碼";
@@ -2417,7 +2458,8 @@ $("#verBadge").onclick=()=>{
   if(++tapN<5) return;
   tapN=0;
   if(admin) return;
-  if(CLOUD?isAdminUser():sessionStorage.getItem("dossierAuth")==="1"){
+  if(CLOUD?(restoreAdmin()&&isAdminUser()):sessionStorage.getItem("dossierAuth")==="1"){
+    if(CLOUD){ REST_MODE=true; WRITE_REST=true; }
     adminRevealed=true;$("#segMode").style.display="";return setMode(true);
   }
   openLogin();
@@ -2425,7 +2467,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V77");
+  dg("版本","","V78");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
