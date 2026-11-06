@@ -432,7 +432,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V78</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V79</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -503,7 +503,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V78
+   活動專卷 V79
+   V79：章節名稱拿掉自動編號，後台打什麼前台就顯示什麼
    V78：後台登入改成直接用 HTTPS 跟 Google 驗證，不再經過 Firebase 套件，也不碰瀏覽器裡的 firebaseLocalStorageDb；那個資料庫卡住時照樣登得進去。存檔、上傳全部走 HTTPS，別人改過的提醒每 60 秒檢查一次
    V77：看過的檔案存在這台裝置，F5 重新整理只抓目錄比對；檔案沒換就用裝置上的，不再耗 Firebase 流量。下載整份 PDF 也共用同一份
    V76：刷進人數卡片改版：每天加今年／去年對照小長條、人最多那天標出來、底部顯示比去年多（少）幾人
@@ -572,8 +573,8 @@ const visFiles=s=>(s.files||[]).filter(f=>{
   return !g||edOn(g,EDITION);        // 資料夾關掉，裡面的檔案一起隱藏
 });
 const stripNum=t=>String(t||"").replace(/^\s*\d+\s*[.、．\-_)]*\s*/,"");
-const secTitle=(s,i)=>doc.autoNumber===false?s.title
-  :String(i+1).padStart(2,"0")+". "+stripNum(s.title);
+/* V79：章節名稱照後台打的原樣顯示，不再自動加編號 */
+const secTitle=s=>s.title;
 
 /* ---------- PDF 元件：需要時才載入，主來源載不到就換備用來源 ----------
    以前是寫死在頁面開頭載入，cdnjs 一被擋，後面整段程式都不會跑，畫面就整個空白。 */
@@ -1839,7 +1840,7 @@ async function mergePdf(section){
       const pg=out.getPage(0),size=9;
       pg.drawText(mark,{x:pg.getWidth()-font.widthOfTextAtSize(mark,size)-18,y:14,size,font,color:rgb(.55,.57,.6)});
     }catch(e){}
-    const nm=((section?doc.title+"_"+stripNum(section.title):doc.title+"_"+edName(EDITION))||"專卷").replace(/[\\/:*?"<>|]/g,"");
+    const nm=((section?doc.title+"_"+section.title:doc.title+"_"+edName(EDITION))||"專卷").replace(/[\\/:*?"<>|]/g,"");
     saveBlob(new Blob([await out.save()],{type:"application/pdf"}),nm+".pdf");
     toast(skipped?"已下載，"+skipped+" 個檔案略過":"已下載 PDF");
   }catch(err){toast("合併失敗："+err.message)}
@@ -1924,10 +1925,6 @@ function renderAdmin(){
         <label class="field"><span>標題</span><input id="fTitle" value="${esc(doc.title)}"></label>
         <label class="field"><span>副標</span><input id="fSub" value="${esc(doc.subtitle)}"></label>
       </div>
-      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2)">
-        <input type="checkbox" id="fAutoNum" ${doc.autoNumber===false?"":"checked"} style="width:auto">
-        章節自動編號：每個版本各自從 01 開始重排（關掉就照你自己打的名稱顯示）
-      </label>
     </div>
 
     <div class="panel">
@@ -2025,7 +2022,6 @@ function renderAdmin(){
   });
   $("#fTitle").oninput=e=>{doc.title=e.target.value;$("#hdTitle").textContent=e.target.value;save()};
   $("#fSub").oninput=e=>{doc.subtitle=e.target.value;save()};
-  $("#fAutoNum").onchange=e=>{doc.autoNumber=e.target.checked;save();renderAdmin()};
   STAT_ITEMS.forEach(it=>{
     $("#fStat_"+it.key+"_cur").oninput=e=>{doc.stats[it.key].cur=e.target.value;save()};
     $("#fStat_"+it.key+"_last").oninput=e=>{doc.stats[it.key].last=e.target.value;save()};
@@ -2467,7 +2463,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V78");
+  dg("版本","","V79");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
