@@ -426,18 +426,23 @@ button{cursor:pointer;border:0;background:none}
 /* ---------- V80 即將開始提醒 ---------- */
 .soon{display:none;max-width:1600px;margin:0 auto;padding:7px 16px;border-top:1px solid #F0CFA2;background:#FDF1E2}
 .soon.on{display:block}
-.soon-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;font-size:13px;color:#7A4A12;padding:2px 0;line-height:1.5}
+.soon-item{display:grid;grid-template-columns:auto 1fr auto;column-gap:8px;row-gap:1px;align-items:center;width:100%;text-align:left;font-size:13px;color:#7A4A12;padding:2px 0;line-height:1.45}
+.soon-item .ic{grid-row:1/3;align-self:center;font-size:16px}
+.soon-item .t1{min-width:0;overflow-wrap:anywhere}
+.soon-item .t2{grid-column:2/4;font-size:12px;color:#8A5A22}
+.soon-item.live{color:#7A1F14}
+.soon-item.live .t2{color:#9B3A2F}
+.soon-item.live .left{background:var(--danger)}
 .soon-item+.soon-item{border-top:1px dashed #F0CFA2;margin-top:3px;padding-top:5px}
-.soon-item .ic{flex:0 0 auto}
 .soon-item b{font-weight:700;color:#5E3608}
-.soon-item .left{margin-left:auto;flex:0 0 auto;font-weight:700;font-size:12px;color:#fff;background:#E38B29;border-radius:999px;padding:1px 9px;white-space:nowrap}
+.soon-item .left{justify-self:end;font-weight:700;font-size:12px;color:#fff;background:#E38B29;border-radius:999px;padding:1px 9px;white-space:nowrap}
 .soon-item:hover b{text-decoration:underline}
 .ic-btn.sch{width:auto;padding:0 8px;font-size:12px;gap:3px;display:inline-flex;align-items:center;border:1px solid var(--rule);background:#fff;white-space:nowrap}
 .ic-btn.sch.has{background:#FDF1E2;border-color:#F0CFA2;color:#7A4A12;font-weight:600}
 .schrow{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .schrow input{border:1px solid var(--rule);border-radius:7px;padding:6px 7px;font-size:13.5px;background:#fff}
-.schrow input[type=date]{flex:1 1 140px}
-.schrow input[type=time]{flex:0 0 100px}
+.schrow input[type=date]{flex:1 1 150px}
+.schrow input.tm{flex:0 0 70px;width:70px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.03em}
 .schrow .dash{color:var(--ink-3)}
 @media (max-width:860px){.soon{padding:6px 10px}.soon-item{font-size:12px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -449,7 +454,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V80</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V81</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -485,7 +490,9 @@ button{cursor:pointer;border:0;background:none}
 <div class="mask" id="schMask">
   <div class="modal" style="max-width:460px">
     <h3 id="schTitle">活動時段</h3>
-    <p>可以加好幾天。開始前 2 小時內，前台表頭下方會出現「即將開始」提醒。<br><b>時間一律以台灣時間（UTC+8）計算</b>，人在國外看也一樣準。</p>
+    <p>可以加好幾天。開始前 2 小時內，前台表頭下方會出現「即將開始」提醒。<br><b>時間一律以台灣時間（UTC+8）計算</b>。活動開始後會改顯示「進行中」，到結束時間才消失。</p>
+    <label class="field"><span>提醒上顯示的標題（預設是檔案名稱，可以改）</span><input id="schName" maxlength="40"></label>
+    <div style="font-size:12px;color:var(--ink-3);margin:0 0 6px">日期　　　　　　　開始　　 結束（24 小時制，直接打 0930）</div>
     <div id="schRows"></div>
     <button class="addFolder" id="schAdd" style="margin-bottom:14px">＋ 再加一天</button>
     <div class="row"><button class="btn" id="schCancel">取消</button><button class="btn primary" id="schOk">存檔</button></div>
@@ -531,7 +538,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V80
+   活動專卷 V81
+   V81：提醒改兩行（手機好讀）；開始後顯示「進行中，預計幾點結束」；時段可自訂標題（預設檔名）；時間改 24 小時制直接打數字；日期年份鎖 4 碼
    V80：每份檔案可設時段（可多天）；開始前 2 小時內，前台表頭下方出現「即將開始」提醒，時間一律以台灣時間計算
    V79：章節名稱拿掉自動編號，後台打什麼前台就顯示什麼
    V78：後台登入改成直接用 HTTPS 跟 Google 驗證，不再經過 Firebase 套件，也不碰瀏覽器裡的 firebaseLocalStorageDb；那個資料庫卡住時照樣登得進去。存檔、上傳全部走 HTTPS，別人改過的提醒每 60 秒檢查一次
@@ -718,7 +726,12 @@ const stampFmt=ts=>{
 /* ---------- V80：活動時段 & 即將開始提醒 ----------
    f.sched = [{d:"2026-12-01", s:"09:30", e:"17:00"}]，時間以台灣時間解讀 */
 const EVENT_TZ="+08:00", SOON_MS=2*3600*1000;
-const schAt=(d,t)=>{ const x=new Date(d+"T"+t+":00"+EVENT_TZ); return isNaN(x)?null:x.getTime(); };
+const TM_RE=/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
+const schAt=(d,t)=>{
+  if(!d||!TM_RE.test(t||"")) return null;
+  if(t==="24:00"){ const x=new Date(d+"T00:00:00"+EVENT_TZ); return isNaN(x)?null:x.getTime()+86400000; }
+  const x=new Date(d+"T"+t+":00"+EVENT_TZ); return isNaN(x)?null:x.getTime(); };
+const schName=f=>(f.schedTitle||"").trim()||(f.label||f.name);
 const md=d=>{ const p=String(d).split("-"); return p.length===3?(+p[1])+"/"+(+p[2]):d; };
 function schSummary(f){
   const a=(f.sched||[]).filter(x=>x.d);
@@ -730,9 +743,11 @@ function soonList(){
   const now=Date.now(), out=[];
   visSections().forEach(s=>visFiles(s).forEach(f=>(f.sched||[]).forEach(x=>{
     const st=schAt(x.d,x.s); if(st==null) return;
-    if(st>now&&st-now<=SOON_MS) out.push({f,s,x,st});
+    const en=schAt(x.d,x.e)||st+3600000;   // 沒填結束時間，進行中顯示 1 小時
+    if(st>now&&st-now<=SOON_MS) out.push({f,s,x,st,en,live:false});
+    else if(st<=now&&now<en) out.push({f,s,x,st,en,live:true});
   })));
-  return out.sort((a,b)=>a.st-b.st);
+  return out.sort((a,b)=>(b.live-a.live)||(a.st-b.st));
 }
 function paintSoon(){
   const bar=$("#soonBar"); if(!bar) return;
@@ -740,11 +755,15 @@ function paintSoon(){
   const was=bar.classList.contains("on");
   if(!L.length){ bar.classList.remove("on"); bar.innerHTML=""; if(was) measureTop(); return; }
   bar.innerHTML=L.map(o=>{
+    const when=esc(md(o.x.d))+" "+esc(o.x.s)+(o.x.e?"–"+esc(o.x.e):"");
+    const nm='<b>'+esc(schName(o.f))+'</b>';
+    if(o.live)
+      return '<button class="soon-item live" data-soon="'+o.f.id+'"><span class="ic">🔴</span><span class="t1">'+nm+
+        '</span><span class="left">進行中</span><span class="t2">活動進行中'+(o.x.e?"，預計 "+esc(o.x.e)+" 結束":"")+"　·　"+when+"</span></button>";
     const m=Math.max(1,Math.ceil((o.st-Date.now())/60000));
     const left=m>=60?Math.floor(m/60)+" 小時"+(m%60?" "+(m%60)+" 分":""):m+" 分鐘";
-    return '<button class="soon-item" data-soon="'+o.f.id+'"><span class="ic">⏰</span><span>活動 <b>'+
-      esc((o.f.num?o.f.num+" ":"")+(o.f.label||o.f.name))+"</b> 即將開始　"+esc(md(o.x.d))+" "+esc(o.x.s)+
-      (o.x.e?"–"+esc(o.x.e):"")+'</span><span class="left">'+left+"後</span></button>";
+    return '<button class="soon-item" data-soon="'+o.f.id+'"><span class="ic">⏰</span><span class="t1">'+nm+
+      '</span><span class="left">'+left+'後</span><span class="t2">即將開始　·　'+when+"</span></button>";
   }).join("");
   bar.classList.add("on");
   measureTop();
@@ -760,21 +779,35 @@ setInterval(paintSoon,30000);
 
 let schFid=null;
 function schRowHTML(x){
-  return '<div class="schrow"><input type="date" class="sd" value="'+esc(x.d||"")+'">'+
-    '<input type="time" class="ss" value="'+esc(x.s||"09:00")+'"><span class="dash">–</span>'+
-    '<input type="time" class="se" value="'+esc(x.e||"")+'">'+
+  return '<div class="schrow"><input type="date" class="sd" min="2024-01-01" max="2099-12-31" value="'+esc(x.d||"")+'">'+
+    '<input class="tm ss" inputmode="numeric" maxlength="5" placeholder="09:30" value="'+esc(x.s||"09:00")+'"><span class="dash">–</span>'+
+    '<input class="tm se" inputmode="numeric" maxlength="5" placeholder="17:00" value="'+esc(x.e||"")+'">'+
     '<button class="ic-btn" data-schdel title="刪掉這一天">✕</button></div>';
 }
 function openSched(fid){
   const f=fileById(fid); if(!f) return;
   schFid=fid;
   $("#schTitle").textContent="活動時段：「"+(f.label||f.name)+"」";
+  $("#schName").value=schName(f);
   const a=(f.sched&&f.sched.length)?f.sched:[{d:"",s:"09:00",e:""}];
   $("#schRows").innerHTML=a.map(schRowHTML).join("");
   $("#schMask").classList.add("on");
 }
 $("#schRows").addEventListener("click",e=>{
   if(e.target.closest("[data-schdel]")) e.target.closest(".schrow").remove();
+});
+/* 24 小時制：打 0930 自動變 09:30；打 930 或 9 離開時補成 09:30／09:00 */
+$("#schRows").addEventListener("input",e=>{
+  const el=e.target; if(!el.classList.contains("tm")) return;
+  const dg_=el.value.replace(/\D/g,"").slice(0,4);
+  el.value=dg_.length>2?dg_.slice(0,2)+":"+dg_.slice(2):dg_;
+});
+$("#schRows").addEventListener("focusout",e=>{
+  const el=e.target; if(!el.classList.contains("tm")) return;
+  const d=el.value.replace(/\D/g,"");
+  if(!d) return;
+  if(d.length<=2) el.value=d.padStart(2,"0")+":00";
+  else if(d.length===3) el.value="0"+d[0]+":"+d.slice(1);
 });
 $("#schAdd").onclick=()=>{
   const rows=[...$("#schRows").querySelectorAll(".schrow")], last=rows[rows.length-1];
@@ -792,11 +825,16 @@ $("#schOk").onclick=async()=>{
     const d=r.querySelector(".sd").value, st=r.querySelector(".ss").value, en=r.querySelector(".se").value;
     if(!d&&!en) continue;
     if(!d||!st) return toast("每一天都要填日期和開始時間");
+    if(!/^20\d\d-\d\d-\d\d$/.test(d)) return toast("日期不對，年份要是 4 碼");
+    if(!TM_RE.test(st)||st==="24:00") return toast(md(d)+" 的開始時間要是 00:00～23:59");
+    if(en&&!TM_RE.test(en)) return toast(md(d)+" 的結束時間要是 00:00～24:00");
     if(en&&en<=st) return toast(md(d)+" 的結束時間要比開始晚");
     out.push({d,s:st,e:en});
   }
   out.sort((a,b)=>(a.d+a.s).localeCompare(b.d+b.s));
   f.sched=out;
+  const nm=$("#schName").value.trim();
+  f.schedTitle=(nm&&nm!==(f.label||f.name))?nm:"";   // 跟檔名一樣就不另存，之後改檔名會跟著變
   $("#schMask").classList.remove("on"); schFid=null;
   if(await save()!==false){ renderAdmin(); toast(out.length?"已存 "+out.length+" 個時段":"已清除時段"); }
 };
@@ -2581,7 +2619,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V80");
+  dg("版本","","V81");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
