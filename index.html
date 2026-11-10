@@ -437,6 +437,8 @@ button{cursor:pointer;border:0;background:none}
 .soon-item b{font-weight:700;color:#5E3608}
 .soon-item .left{justify-self:end;font-weight:700;font-size:12px;color:#fff;background:#E38B29;border-radius:999px;padding:1px 9px;white-space:nowrap}
 .soon-item:hover b{text-decoration:underline}
+.fr2 .frep{margin-left:auto;padding:4px 11px;font-size:12px;border-radius:7px;flex:0 0 auto}
+.fr2 .frep:hover{background:#fff;border-color:var(--steel);color:var(--steel)}
 .ic-btn.sch{width:auto;padding:0 8px;font-size:12px;gap:3px;display:inline-flex;align-items:center;border:1px solid var(--rule);background:#fff;white-space:nowrap}
 .ic-btn.sch.has{background:#FDF1E2;border-color:#F0CFA2;color:#7A4A12;font-weight:600}
 .impchk{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1px solid var(--rule);border-radius:9px;padding:6px 10px;cursor:pointer;background:#fff;user-select:none}
@@ -482,7 +484,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V86</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V87</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -570,7 +572,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V86
+   活動專卷 V87
+   V87：每份檔案多一顆「換附件」，只換檔案內容，編號、標題、版本、資料夾、時段、排序全部保留
    V86：每個時段可填場次名稱（例：第一梯次），不同名稱的場次在前台各自一列；拿掉「共 N 天」，改成同名多場顯示「第 i／N 場」
    V85：★重要活動改成前台一直顯示（每份只顯示下一個時段），最後一個時段結束才消失；一般活動維持開始前 2 小時
    V84：提醒每一列同樣大小、左右對齊；一般活動用橘色燈號，重要活動用藍色星號
@@ -2382,6 +2385,7 @@ function renderSecList(){
             <label>跳到第 <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁"> 頁</label>
             ${f.kind==="web"&&isGurus(f.url)?`<span class="roomsw" title="切換這一份顯示哪個 Room">${["1","2"].map(r=>`<button data-froom="${f.id}" data-r="${r}" class="${roomOf(f.url)===r?"on":""}">Room ${r}</button>`).join("")}</span>`:""}
             <span class="fn" title="${esc(f.kind==="web"?f.url:f.name)}">${f.kind==="web"?"🔗 "+esc(f.url):esc(f.name)}</span>
+            ${f.kind==="web"?"":`<button class="btn frep" data-frep="${f.id}" title="選一個新檔案換掉這一份，編號、標題、版本、資料夾、時段都不變">⇄ 換附件</button>`}
           </div>
         </div>`).join("") : '<div class="lnone">這一章還沒有檔案</div>'}
     </div>`).join("");
@@ -2413,6 +2417,7 @@ function renderSecList(){
       return;
     }
     if(d.fsch){ openSched(d.fsch); return; }
+    if(d.frep){ pickReplace(d.frep); return; }
     if(d.fed){ edToggle(fileById(d.fed),d.k); await save(); renderAdmin(); return; }
     if(d.froom){
       const f=fileById(d.froom); if(!f||roomOf(f.url)===d.r) return;
@@ -2517,6 +2522,44 @@ function bindDrop(){
   ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot")}));
   ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hot")}));
   drop.addEventListener("drop",e=>handleFiles([...e.dataTransfer.files]));
+}
+
+/* V87：換附件。換成新的檔案編號（裝置上的舊快取自然失效），其他欄位一律不動 */
+function pickReplace(fid){
+  const inp=document.createElement("input"); inp.type="file";
+  inp.onchange=()=>{ const file=inp.files&&inp.files[0]; if(file) replaceFile(fid,file); };
+  inp.click();
+}
+async function replaceFile(fid,file){
+  const f=fileById(fid); if(!f) return toast("找不到這份檔案");
+  const nm=f.label||f.name;
+  if(!confirm("用「"+file.name+"」換掉「"+nm+"」？\n\n編號、標題、版本、資料夾、時段、排序都會保留，只換檔案內容。")) return;
+  const kind=kindOf(file);
+  if(/\.(pptx?|docx?)$/i.test(file.name)) toast("PowerPoint／Word 會變成附件，建議先另存 PDF",4000);
+  const bar=$("#upBar"),fill=bar?bar.querySelector("i"):null;
+  if(bar){ bar.classList.add("on"); fill.style.width="0"; }
+  const btn=document.querySelector('[data-frep="'+fid+'"]'); if(btn){ btn.disabled=true; btn.textContent="上傳中…"; }
+  UPLOADING++;
+  const old={...f}, newId=uid();
+  try{
+    let pages=1;
+    if(kind==="pdf"){
+      await needLib("pdfjs");
+      pages=(await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise).numPages;
+    }
+    await Store.putBlob(newId,file,pct=>{ if(fill) fill.style.width=(pct*100)+"%"; });
+    Object.assign(f,{id:newId,name:file.name,kind,size:file.size,pages,jump:clamp(f.jump||1,1,pages)});
+    if(await save()===false){ Object.assign(f,{id:old.id,name:old.name,kind:old.kind,size:old.size,pages:old.pages,jump:old.jump});
+      Store.delBlob({id:newId}).catch(()=>{}); throw new Error("清單沒存進雲端，已還原成舊檔"); }
+    pdfCache.delete(old.id);
+    Store.delBlob(old).catch(()=>{});
+    toast("已換好「"+nm+"」的附件",3500);
+  }catch(err){ toast("換附件失敗："+err.message,6000); }
+  finally{
+    UPLOADING--;
+    if(bar) setTimeout(()=>{ bar.classList.remove("on"); fill.style.width="0"; },500);
+    renderAdmin();
+  }
 }
 
 async function handleFiles(files){
@@ -2675,7 +2718,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V86");
+  dg("版本","","V87");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
