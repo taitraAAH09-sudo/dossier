@@ -424,7 +424,7 @@ button{cursor:pointer;border:0;background:none}
   .vdt em{display:none}
 }
 /* ---------- V80 即將開始提醒 ---------- */
-.soon{display:none;max-width:1600px;margin:0 auto;padding:7px 16px;border-top:1px solid #F0CFA2;background:#FDF1E2}
+.soon{display:none;max-width:1120px;margin:0 auto 16px;padding:8px 14px;border:1px solid #F0CFA2;border-radius:10px;background:#FDF1E2}
 .soon.on{display:block}
 .soon-item{display:grid;grid-template-columns:auto 1fr auto;column-gap:8px;row-gap:1px;align-items:center;width:100%;text-align:left;font-size:13px;color:#7A4A12;padding:2px 0;line-height:1.45}
 .soon-item .ic{grid-row:1/3;align-self:center;font-size:16px}
@@ -444,7 +444,7 @@ button{cursor:pointer;border:0;background:none}
 .schrow input[type=date]{flex:1 1 150px}
 .schrow input.tm{flex:0 0 70px;width:70px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.03em}
 .schrow .dash{color:var(--ink-3)}
-@media (max-width:860px){.soon{padding:6px 10px}.soon-item{font-size:12px}}
+@media (max-width:860px){.soon{padding:7px 10px;margin-bottom:12px}.soon-item{font-size:12px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -454,7 +454,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V81</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V82</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -468,12 +468,12 @@ button{cursor:pointer;border:0;background:none}
     <button class="btn re" id="btnDiag" style="display:none">連線狀態</button>
     <button class="btn re" id="btnReload">重新整理</button>
   </div>
-  <div class="soon" id="soonBar" aria-live="polite"></div>
 </header>
 
 <nav class="rail" id="rail" aria-label="專卷目錄"></nav>
 
 <main class="main" id="main">
+  <div class="soon" id="soonBar" aria-live="polite"></div>
   <section id="viewPane"><div class="loading" id="bootMsg">連線中…</div></section>
   <section id="adminPane" style="display:none"></section>
 </main>
@@ -538,7 +538,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V81
+   活動專卷 V82
+   V82：活動提醒不再凍結在表頭，改放在內容最上方，跟著頁面捲走
    V81：提醒改兩行（手機好讀）；開始後顯示「進行中，預計幾點結束」；時段可自訂標題（預設檔名）；時間改 24 小時制直接打數字；日期年份鎖 4 碼
    V80：每份檔案可設時段（可多天）；開始前 2 小時內，前台表頭下方出現「即將開始」提醒，時間一律以台灣時間計算
    V79：章節名稱拿掉自動編號，後台打什麼前台就顯示什麼
@@ -2619,7 +2620,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V81");
+  dg("版本","","V82");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
