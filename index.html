@@ -450,7 +450,6 @@ button{cursor:pointer;border:0;background:none}
 .soon-item.imp b{color:#122452}
 .soon-item.imp .t2{color:#33508F}
 .soon-item.imp .left{background:#1F3F8B}
-.soon-item.imp.live{border-left-color:var(--danger)}
 .soon-item.imp.live .left{background:var(--danger)}
 .soon-item.imp+.soon-item,.soon-item+.soon-item.imp{border-top:0;margin-top:6px}
 .ic-btn.sch.imp{background:#E8EEFB;border-color:#8FA6DA;color:#1F3F8B}
@@ -459,7 +458,18 @@ button{cursor:pointer;border:0;background:none}
 .schrow input[type=date]{flex:1 1 150px}
 .schrow input.tm{flex:0 0 70px;width:70px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:.03em}
 .schrow .dash{color:var(--ink-3)}
-@media (max-width:860px){.soon{padding:7px 10px;margin-bottom:12px}.soon-item{font-size:12px}}
+/* V84：每一列同一個框，燈號欄固定寬，全部對齊 */
+.soon{padding:8px;display:none;flex-direction:column;gap:6px}
+.soon.on{display:flex}
+.soon .soon-item,.soon .soon-item+.soon-item,.soon .soon-item.imp+.soon-item,.soon .soon-item+.soon-item.imp{
+  margin:0;padding:7px 12px 7px 10px;border:1px solid #F0CFA2;border-left:4px solid #E38B29;border-radius:8px;background:#FFF8EE}
+.soon .soon-item.imp{background:#E8EEFB;border-color:#AFC0E6;border-left-color:#1F3F8B}
+.soon-item .ic{width:18px;display:flex;justify-content:center;align-items:center;font-size:0}
+.soon-item .ic::before{content:"";width:11px;height:11px;border-radius:50%;background:#E38B29;box-shadow:0 0 0 3px rgba(227,139,41,.22)}
+.soon-item.imp .ic::before{content:"★";width:auto;height:auto;border-radius:0;background:none;box-shadow:none;font-size:17px;line-height:1;color:#1F3F8B}
+.soon-item.live:not(.imp) .ic::before{animation:soonBlink 1.6s ease-in-out infinite}
+@keyframes soonBlink{50%{opacity:.35}}
+@media (max-width:860px){.soon{padding:6px;margin-bottom:12px}.soon-item{font-size:12px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -469,7 +479,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V83</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V84</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -556,7 +566,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V83
+   活動專卷 V84
+   V84：提醒每一列同樣大小、左右對齊；一般活動用橘色燈號，重要活動用藍色星號
    V83：時段視窗右上角可勾「重要活動」，提前 4 小時提醒，前台用深藍＋★重要 跟一般活動區分
    V82：活動提醒不再凍結在表頭，改放在內容最上方，跟著頁面捲走
    V81：提醒改兩行（手機好讀）；開始後顯示「進行中，預計幾點結束」；時段可自訂標題（預設檔名）；時間改 24 小時制直接打數字；日期年份鎖 4 碼
@@ -777,14 +788,14 @@ function paintSoon(){
   if(!L.length){ bar.classList.remove("on"); bar.innerHTML=""; if(was) measureTop(); return; }
   bar.innerHTML=L.map(o=>{
     const when=esc(md(o.x.d))+" "+esc(o.x.s)+(o.x.e?"–"+esc(o.x.e):"");
-    const nm=(o.imp?'<span class="tag">★ 重要</span>':'')+'<b>'+esc(schName(o.f))+'</b>';
+    const nm='<b>'+esc(schName(o.f))+'</b>'+(o.imp?'<span class="tag" style="margin:0 0 0 6px">重要</span>':'');
     const cls=o.imp?" imp":"";
     if(o.live)
-      return '<button class="soon-item live'+cls+'" data-soon="'+o.f.id+'"><span class="ic">🔴</span><span class="t1">'+nm+
+      return '<button class="soon-item live'+cls+'" data-soon="'+o.f.id+'"><span class="ic" aria-hidden="true"></span><span class="t1">'+nm+
         '</span><span class="left">進行中</span><span class="t2">活動進行中'+(o.x.e?"，預計 "+esc(o.x.e)+" 結束":"")+"　·　"+when+"</span></button>";
     const m=Math.max(1,Math.ceil((o.st-Date.now())/60000));
     const left=m>=60?Math.floor(m/60)+" 小時"+(m%60?" "+(m%60)+" 分":""):m+" 分鐘";
-    return '<button class="soon-item'+cls+'" data-soon="'+o.f.id+'"><span class="ic">⏰</span><span class="t1">'+nm+
+    return '<button class="soon-item'+cls+'" data-soon="'+o.f.id+'"><span class="ic" aria-hidden="true"></span><span class="t1">'+nm+
       '</span><span class="left">'+left+'後</span><span class="t2">即將開始　·　'+when+"</span></button>";
   }).join("");
   bar.classList.add("on");
@@ -2643,7 +2654,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V83");
+  dg("版本","","V84");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
