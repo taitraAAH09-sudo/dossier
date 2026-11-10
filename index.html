@@ -479,7 +479,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V84</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V85</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -516,9 +516,9 @@ button{cursor:pointer;border:0;background:none}
   <div class="modal" style="max-width:460px">
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px">
       <h3 id="schTitle" style="flex:1;min-width:0;margin:0">活動時段</h3>
-      <label class="impchk" title="勾起來：提前 4 小時提醒，前台用重要活動樣式顯示"><input type="checkbox" id="schImp"><span>★ 重要活動<i>提前 4 小時通知</i></span></label>
+      <label class="impchk" title="勾起來：前台一直顯示這個活動，直到最後一個時段結束"><input type="checkbox" id="schImp"><span>★ 重要活動<i>前台一直顯示</i></span></label>
     </div>
-    <p>可以加好幾天。一般活動開始前 2 小時、重要活動開始前 4 小時，前台表頭下方會出現「即將開始」提醒。<br><b>時間一律以台灣時間（UTC+8）計算</b>。活動開始後會改顯示「進行中」，到結束時間才消失。</p>
+    <p>可以加好幾天。一般活動開始前 2 小時，前台會出現「即將開始」提醒；★重要活動在前台一直顯示，直到最後一天結束。<br><b>時間一律以台灣時間（UTC+8）計算</b>。活動開始後會改顯示「進行中」，到結束時間才消失。</p>
     <label class="field"><span>提醒上顯示的標題（預設是檔案名稱，可以改）</span><input id="schName" maxlength="40"></label>
     <div style="font-size:12px;color:var(--ink-3);margin:0 0 6px">日期　　　　　　　開始　　 結束（24 小時制，直接打 0930）</div>
     <div id="schRows"></div>
@@ -566,7 +566,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V84
+   活動專卷 V85
+   V85：★重要活動改成前台一直顯示（每份只顯示下一個時段），最後一個時段結束才消失；一般活動維持開始前 2 小時
    V84：提醒每一列同樣大小、左右對齊；一般活動用橘色燈號，重要活動用藍色星號
    V83：時段視窗右上角可勾「重要活動」，提前 4 小時提醒，前台用深藍＋★重要 跟一般活動區分
    V82：活動提醒不再凍結在表頭，改放在內容最上方，跟著頁面捲走
@@ -756,7 +757,7 @@ const stampFmt=ts=>{
 };
 /* ---------- V80：活動時段 & 即將開始提醒 ----------
    f.sched = [{d:"2026-12-01", s:"09:30", e:"17:00"}]，時間以台灣時間解讀 */
-const EVENT_TZ="+08:00", SOON_MS=2*3600*1000, SOON_IMP_MS=4*3600*1000;
+const EVENT_TZ="+08:00", SOON_MS=2*3600*1000;
 const TM_RE=/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 const schAt=(d,t)=>{
   if(!d||!TM_RE.test(t||"")) return null;
@@ -775,11 +776,14 @@ function soonList(){
   visSections().forEach(s=>visFiles(s).forEach(f=>(f.sched||[]).forEach(x=>{
     const st=schAt(x.d,x.s); if(st==null) return;
     const en=schAt(x.d,x.e)||st+3600000;   // 沒填結束時間，進行中顯示 1 小時
-    const imp=!!f.schedImp, lead=imp?SOON_IMP_MS:SOON_MS;
-    if(st>now&&st-now<=lead) out.push({f,s,x,st,en,imp,live:false});
+    const imp=!!f.schedImp;
+    if(st>now&&(imp||st-now<=SOON_MS)) out.push({f,s,x,st,en,imp,live:false});
     else if(st<=now&&now<en) out.push({f,s,x,st,en,imp,live:true});
   })));
-  return out.sort((a,b)=>(b.live-a.live)||(b.imp-a.imp)||(a.st-b.st));
+  /* 重要活動每份只留一列：進行中的那段，沒有就留最近的下一段 */
+  const seen=new Set();
+  out.sort((a,b)=>(b.live-a.live)||(a.st-b.st));
+  return out.filter(o=>{ if(!o.imp) return true; if(seen.has(o.f.id)) return false; seen.add(o.f.id); return true; }).sort((a,b)=>(b.live-a.live)||(b.imp-a.imp)||(a.st-b.st));
 }
 function paintSoon(){
   const bar=$("#soonBar"); if(!bar) return;
@@ -794,9 +798,11 @@ function paintSoon(){
       return '<button class="soon-item live'+cls+'" data-soon="'+o.f.id+'"><span class="ic" aria-hidden="true"></span><span class="t1">'+nm+
         '</span><span class="left">進行中</span><span class="t2">活動進行中'+(o.x.e?"，預計 "+esc(o.x.e)+" 結束":"")+"　·　"+when+"</span></button>";
     const m=Math.max(1,Math.ceil((o.st-Date.now())/60000));
-    const left=m>=60?Math.floor(m/60)+" 小時"+(m%60?" "+(m%60)+" 分":""):m+" 分鐘";
+    const left=m>=1440?"還有 "+Math.floor(m/1440)+" 天":(m>=60?Math.floor(m/60)+" 小時"+(m%60?" "+(m%60)+" 分":""):m+" 分鐘")+"後";
+    const nDays=o.imp?(o.f.sched||[]).filter(y=>y.d).length:0;
     return '<button class="soon-item'+cls+'" data-soon="'+o.f.id+'"><span class="ic" aria-hidden="true"></span><span class="t1">'+nm+
-      '</span><span class="left">'+left+'後</span><span class="t2">即將開始　·　'+when+"</span></button>";
+      '</span><span class="left">'+left+'</span><span class="t2">'+(m<=120?"即將開始":"預定開始")+"　·　"+when+
+      (nDays>1?"（共 "+nDays+" 天）":"")+"</span></button>";
   }).join("");
   bar.classList.add("on");
   measureTop();
@@ -2348,7 +2354,7 @@ function renderSecList(){
             <span class="edt">${EDITIONS.map(e=>`<button data-fed="${f.id}" data-k="${e.k}" class="${edVal(f,e.k)?"on":"off"}" title="這一份要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
             <span class="only ${edBadge(f).c}">${esc(edBadge(f).t)}</span>
             <span class="grow"></span>
-            <button class="ic-btn sch ${(f.sched||[]).length?(f.schedImp?"imp":"has"):""}" data-fsch="${f.id}" title="設定活動時段（一般提前 2 小時、重要提前 4 小時提醒）">${f.schedImp&&(f.sched||[]).length?"★":"🕒"} ${(f.sched||[]).length?esc(schSummary(f)):"時段"}</button>
+            <button class="ic-btn sch ${(f.sched||[]).length?(f.schedImp?"imp":"has"):""}" data-fsch="${f.id}" title="設定活動時段（一般提前 2 小時提醒、重要活動一直顯示）">${f.schedImp&&(f.sched||[]).length?"★":"🕒"} ${(f.sched||[]).length?esc(schSummary(f)):"時段"}</button>
             <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
             <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
             <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
@@ -2654,7 +2660,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V84");
+  dg("版本","","V85");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
