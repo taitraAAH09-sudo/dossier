@@ -439,6 +439,21 @@ button{cursor:pointer;border:0;background:none}
 .soon-item:hover b{text-decoration:underline}
 .ic-btn.sch{width:auto;padding:0 8px;font-size:12px;gap:3px;display:inline-flex;align-items:center;border:1px solid var(--rule);background:#fff;white-space:nowrap}
 .ic-btn.sch.has{background:#FDF1E2;border-color:#F0CFA2;color:#7A4A12;font-weight:600}
+.impchk{flex:0 0 auto;display:flex;align-items:center;gap:7px;border:1px solid var(--rule);border-radius:9px;padding:6px 10px;cursor:pointer;background:#fff;user-select:none}
+.impchk input{width:17px;height:17px;margin:0;accent-color:#1F3F8B;cursor:pointer}
+.impchk span{display:flex;flex-direction:column;font-size:13px;font-weight:700;color:var(--ink-2);line-height:1.25}
+.impchk i{font-style:normal;font-weight:400;font-size:11px;color:var(--ink-3)}
+.impchk:has(input:checked){background:#E8EEFB;border-color:#8FA6DA}
+.impchk:has(input:checked) span{color:#1F3F8B}
+.soon-item .tag{display:inline-block;font-size:11px;font-weight:700;color:#fff;background:#1F3F8B;border-radius:4px;padding:0 6px;margin-right:6px;vertical-align:1px}
+.soon-item.imp{background:#E8EEFB;border:1px solid #AFC0E6;border-left:4px solid #1F3F8B;border-radius:8px;padding:6px 10px;color:#1A2F63}
+.soon-item.imp b{color:#122452}
+.soon-item.imp .t2{color:#33508F}
+.soon-item.imp .left{background:#1F3F8B}
+.soon-item.imp.live{border-left-color:var(--danger)}
+.soon-item.imp.live .left{background:var(--danger)}
+.soon-item.imp+.soon-item,.soon-item+.soon-item.imp{border-top:0;margin-top:6px}
+.ic-btn.sch.imp{background:#E8EEFB;border-color:#8FA6DA;color:#1F3F8B}
 .schrow{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
 .schrow input{border:1px solid var(--rule);border-radius:7px;padding:6px 7px;font-size:13.5px;background:#fff}
 .schrow input[type=date]{flex:1 1 150px}
@@ -454,7 +469,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V82</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V83</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -489,8 +504,11 @@ button{cursor:pointer;border:0;background:none}
 
 <div class="mask" id="schMask">
   <div class="modal" style="max-width:460px">
-    <h3 id="schTitle">活動時段</h3>
-    <p>可以加好幾天。開始前 2 小時內，前台表頭下方會出現「即將開始」提醒。<br><b>時間一律以台灣時間（UTC+8）計算</b>。活動開始後會改顯示「進行中」，到結束時間才消失。</p>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:6px">
+      <h3 id="schTitle" style="flex:1;min-width:0;margin:0">活動時段</h3>
+      <label class="impchk" title="勾起來：提前 4 小時提醒，前台用重要活動樣式顯示"><input type="checkbox" id="schImp"><span>★ 重要活動<i>提前 4 小時通知</i></span></label>
+    </div>
+    <p>可以加好幾天。一般活動開始前 2 小時、重要活動開始前 4 小時，前台表頭下方會出現「即將開始」提醒。<br><b>時間一律以台灣時間（UTC+8）計算</b>。活動開始後會改顯示「進行中」，到結束時間才消失。</p>
     <label class="field"><span>提醒上顯示的標題（預設是檔案名稱，可以改）</span><input id="schName" maxlength="40"></label>
     <div style="font-size:12px;color:var(--ink-3);margin:0 0 6px">日期　　　　　　　開始　　 結束（24 小時制，直接打 0930）</div>
     <div id="schRows"></div>
@@ -538,7 +556,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V82
+   活動專卷 V83
+   V83：時段視窗右上角可勾「重要活動」，提前 4 小時提醒，前台用深藍＋★重要 跟一般活動區分
    V82：活動提醒不再凍結在表頭，改放在內容最上方，跟著頁面捲走
    V81：提醒改兩行（手機好讀）；開始後顯示「進行中，預計幾點結束」；時段可自訂標題（預設檔名）；時間改 24 小時制直接打數字；日期年份鎖 4 碼
    V80：每份檔案可設時段（可多天）；開始前 2 小時內，前台表頭下方出現「即將開始」提醒，時間一律以台灣時間計算
@@ -726,7 +745,7 @@ const stampFmt=ts=>{
 };
 /* ---------- V80：活動時段 & 即將開始提醒 ----------
    f.sched = [{d:"2026-12-01", s:"09:30", e:"17:00"}]，時間以台灣時間解讀 */
-const EVENT_TZ="+08:00", SOON_MS=2*3600*1000;
+const EVENT_TZ="+08:00", SOON_MS=2*3600*1000, SOON_IMP_MS=4*3600*1000;
 const TM_RE=/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/;
 const schAt=(d,t)=>{
   if(!d||!TM_RE.test(t||"")) return null;
@@ -745,10 +764,11 @@ function soonList(){
   visSections().forEach(s=>visFiles(s).forEach(f=>(f.sched||[]).forEach(x=>{
     const st=schAt(x.d,x.s); if(st==null) return;
     const en=schAt(x.d,x.e)||st+3600000;   // 沒填結束時間，進行中顯示 1 小時
-    if(st>now&&st-now<=SOON_MS) out.push({f,s,x,st,en,live:false});
-    else if(st<=now&&now<en) out.push({f,s,x,st,en,live:true});
+    const imp=!!f.schedImp, lead=imp?SOON_IMP_MS:SOON_MS;
+    if(st>now&&st-now<=lead) out.push({f,s,x,st,en,imp,live:false});
+    else if(st<=now&&now<en) out.push({f,s,x,st,en,imp,live:true});
   })));
-  return out.sort((a,b)=>(b.live-a.live)||(a.st-b.st));
+  return out.sort((a,b)=>(b.live-a.live)||(b.imp-a.imp)||(a.st-b.st));
 }
 function paintSoon(){
   const bar=$("#soonBar"); if(!bar) return;
@@ -757,13 +777,14 @@ function paintSoon(){
   if(!L.length){ bar.classList.remove("on"); bar.innerHTML=""; if(was) measureTop(); return; }
   bar.innerHTML=L.map(o=>{
     const when=esc(md(o.x.d))+" "+esc(o.x.s)+(o.x.e?"–"+esc(o.x.e):"");
-    const nm='<b>'+esc(schName(o.f))+'</b>';
+    const nm=(o.imp?'<span class="tag">★ 重要</span>':'')+'<b>'+esc(schName(o.f))+'</b>';
+    const cls=o.imp?" imp":"";
     if(o.live)
-      return '<button class="soon-item live" data-soon="'+o.f.id+'"><span class="ic">🔴</span><span class="t1">'+nm+
+      return '<button class="soon-item live'+cls+'" data-soon="'+o.f.id+'"><span class="ic">🔴</span><span class="t1">'+nm+
         '</span><span class="left">進行中</span><span class="t2">活動進行中'+(o.x.e?"，預計 "+esc(o.x.e)+" 結束":"")+"　·　"+when+"</span></button>";
     const m=Math.max(1,Math.ceil((o.st-Date.now())/60000));
     const left=m>=60?Math.floor(m/60)+" 小時"+(m%60?" "+(m%60)+" 分":""):m+" 分鐘";
-    return '<button class="soon-item" data-soon="'+o.f.id+'"><span class="ic">⏰</span><span class="t1">'+nm+
+    return '<button class="soon-item'+cls+'" data-soon="'+o.f.id+'"><span class="ic">⏰</span><span class="t1">'+nm+
       '</span><span class="left">'+left+'後</span><span class="t2">即將開始　·　'+when+"</span></button>";
   }).join("");
   bar.classList.add("on");
@@ -790,6 +811,7 @@ function openSched(fid){
   schFid=fid;
   $("#schTitle").textContent="活動時段：「"+(f.label||f.name)+"」";
   $("#schName").value=schName(f);
+  $("#schImp").checked=!!f.schedImp;
   const a=(f.sched&&f.sched.length)?f.sched:[{d:"",s:"09:00",e:""}];
   $("#schRows").innerHTML=a.map(schRowHTML).join("");
   $("#schMask").classList.add("on");
@@ -834,6 +856,7 @@ $("#schOk").onclick=async()=>{
   }
   out.sort((a,b)=>(a.d+a.s).localeCompare(b.d+b.s));
   f.sched=out;
+  f.schedImp=$("#schImp").checked;
   const nm=$("#schName").value.trim();
   f.schedTitle=(nm&&nm!==(f.label||f.name))?nm:"";   // 跟檔名一樣就不另存，之後改檔名會跟著變
   $("#schMask").classList.remove("on"); schFid=null;
@@ -2314,7 +2337,7 @@ function renderSecList(){
             <span class="edt">${EDITIONS.map(e=>`<button data-fed="${f.id}" data-k="${e.k}" class="${edVal(f,e.k)?"on":"off"}" title="這一份要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
             <span class="only ${edBadge(f).c}">${esc(edBadge(f).t)}</span>
             <span class="grow"></span>
-            <button class="ic-btn sch ${(f.sched||[]).length?"has":""}" data-fsch="${f.id}" title="設定活動時段（開始前 2 小時前台會提醒）">🕒 ${(f.sched||[]).length?esc(schSummary(f)):"時段"}</button>
+            <button class="ic-btn sch ${(f.sched||[]).length?(f.schedImp?"imp":"has"):""}" data-fsch="${f.id}" title="設定活動時段（一般提前 2 小時、重要提前 4 小時提醒）">${f.schedImp&&(f.sched||[]).length?"★":"🕒"} ${(f.sched||[]).length?esc(schSummary(f)):"時段"}</button>
             <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
             <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
             <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
@@ -2620,7 +2643,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V82");
+  dg("版本","","V83");
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
