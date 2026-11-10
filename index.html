@@ -484,7 +484,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V87</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V88</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -494,7 +494,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="stamp" id="stamp">
     <span class="dot" aria-hidden="true"></span>
     <span id="stampTx">內容更新時間</span>
-    <span class="hint">重新整理就是最新版</span>
+    <span class="hint">後台有更新會自動換成最新版</span>
     <button class="btn re" id="btnDiag" style="display:none">連線狀態</button>
     <button class="btn re" id="btnReload">重新整理</button>
   </div>
@@ -572,7 +572,12 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V87
+   活動專卷 V88
+   V88：同事開著舊頁面也不會白掉——
+        1. 前台發現雲端內容變了（每 60 秒、切回分頁時檢查），自動換成最新內容，停在原本看的那一份
+        2. 抓檔抓不到（檔案剛被換掉／刪掉）就自己重讀目錄，不再留一塊空白；圖片讀不出來會寫原因
+        3. 換附件、刪檔、刪章節時舊檔先留 24 小時才真的刪，還沒更新的舊版頁面照樣看得到
+        4. 網頁程式本身也有版本號：後台用新版存過檔，舊版程式的頁面會自動重新載入新版（避開 GitHub Pages 快取）
    V87：每份檔案多一顆「換附件」，只換檔案內容，編號、標題、版本、資料夾、時段、排序全部保留
    V86：每個時段可填場次名稱（例：第一梯次），不同名稱的場次在前台各自一列；拿掉「共 N 天」，改成同名多場顯示「第 i／N 場」
    V85：★重要活動改成前台一直顯示（每份只顯示下一個時段），最後一個時段結束才消失；一般活動維持開始前 2 小時
@@ -1143,7 +1148,9 @@ const Store={
           const hit=await idb("blobs","readonly",s=>s.get(CACHE_PFX+f.id)).catch(()=>null);
           if(hit&&hit.byteLength){ cacheCount(true,hit.byteLength); return new Uint8Array(hit); }
           const r=await cloudGet(DB_ROOT+"/blobs/"+f.id,30000);
-          if(!r) throw new Error("雲端上找不到這個檔案");
+          if(!r){ const e=new Error("這份檔案剛在後台換過，正在載入最新版…"); e.gone=true;
+            softRefresh("gone").then(ok=>{ if(!ok&&$("#lb").classList.contains("on")) pendingHeal=true; });
+            throw e; }
           const bytes=b64ToBytes(Object.keys(r).sort().map(k=>r[k]).join(""));
           await idb("blobs","readwrite",s=>s.put(bytes.slice().buffer,CACHE_PFX+f.id)).catch(()=>{});  // 裝置空間不夠就算了，照樣顯示
           cacheCount(false,bytes.byteLength);
@@ -1636,7 +1643,9 @@ async function renderView(){
         el.insertAdjacentHTML("afterbegin",'<img src="'+url+'" alt="'+esc(f.name)+'">');
         el.querySelector(".ph")?.remove();
         el.insertAdjacentHTML("beforeend",'<button class="zoom">放大</button>');
-      }catch(err){}
+      }catch(err){
+        el.innerHTML='<div style="padding:26px;text-align:center;color:var(--ink-3);font-size:13px">這張圖讀不出來：'+esc(err.message)+"</div>";
+      }
     }
   }
 }
@@ -1812,6 +1821,8 @@ function lbClose(){
   lbPages=[]; lbCur=0; lbSecId=null;
   lbBody().innerHTML=""; $("#lbRail").innerHTML="";
   $("#lb").classList.remove("on");
+  /* 看放大的時候後台更新了：關掉放大視窗再換成最新版，不打斷閱讀 */
+  if(!admin&&(pendingHeal||STALE)){ pendingHeal=false; softRefresh("stale"); }
 }
 /* 放大＝打開這一章的完整閱讀器：整章的檔案接著排，側邊可隨時跳到別份 */
 async function openLightbox(fid,num){
@@ -2059,12 +2070,108 @@ async function mergePdf(section){
   finally{btn.disabled=false;btn.textContent=label}
 }
 $("#btnMerge").onclick=()=>mergePdf(null);
-$("#btnReload").onclick=()=>location.reload();
+/* 重新整理時在網址後面加一段亂數，繞過 GitHub Pages／瀏覽器快取，確定拿到最新版程式 */
+function hardReload(){
+  const u=new URL(location.href); u.searchParams.set("_r",Date.now().toString(36)); location.replace(u.href);
+}
+$("#btnReload").onclick=hardReload;
+
+/* ---------- V88：舊頁面自動換成最新內容 ---------- */
+const APP_VER=88;
+let healing=null, lastHeal=0, pendingHeal=false, CODE_OLD=false;
+/* 雲端記錄的「最低程式版本」比這頁新 → 這頁是舊程式，自動重新載入（5 分鐘內只自動一次，避免快取沒更新時一直跳） */
+function versionGate(d){
+  if(!d||!(+d.minVer>APP_VER)) return false;
+  CODE_OLD=true;
+  let last=0; try{ last=+sessionStorage.getItem("dossierVerReload")||0; }catch(e){}
+  const busy=$("#lb").classList.contains("on")||admin||UPLOADING>0||SAVING>0;
+  if(!busy&&Date.now()-last>5*60000){
+    try{ sessionStorage.setItem("dossierVerReload",String(Date.now())); }catch(e){}
+    hardReload(); return true;
+  }
+  STALE=true; $("#stamp").classList.add("stale");
+  $("#stampTx").textContent="網頁程式已更新到 V"+d.minVer+"（這頁是 V"+APP_VER+"），請按右邊「重新整理」";
+  return true;
+}
+function readAnchor(){
+  const caps=[...document.querySelectorAll(".file-cap")];
+  const refY=($("#topBar")?.offsetHeight||88)+16;
+  let cur=null, idx=-1;
+  caps.forEach((c,i)=>{ if(c.getBoundingClientRect().top-refY<=0){ cur=c; idx=i; } });
+  if(!cur) return {y:window.scrollY};
+  return {id:cur.id.slice(4), idx, off:cur.getBoundingClientRect().top};
+}
+function applyAnchor(a){
+  if(a.id==null){ window.scrollTo(0,a.y); return; }
+  const el=document.getElementById("cap-"+a.id)||document.querySelectorAll(".file-cap")[a.idx];
+  if(el) window.scrollTo(0,window.scrollY+el.getBoundingClientRect().top-a.off);
+}
+/* 不重新載入整頁，只重讀目錄、重畫畫面，停在原本看的那一份 */
+async function softRefresh(why){
+  if(admin||!CLOUD||!doc||CODE_OLD) return false;
+  if($("#lb").classList.contains("on")) return false;      // 放大中先不動，關掉後再換
+  if(healing) return healing;
+  if(why==="gone"&&Date.now()-lastHeal<8000) return false; // 同一個問題不要一直重讀
+  lastHeal=Date.now();
+  healing=(async()=>{
+    try{
+      const nd=await cloudGet(DB_ROOT+"/meta",15000);
+      if(!nd||!Array.isArray(nd.sections)) return false;
+      if(versionGate(nd)) return false;
+      if(nd.updated===doc.updated) return false;
+      const a=readAnchor();
+      doc=nd; doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)}); ensureStats();
+      for(const id of [...pdfCache.keys()]) if(!fileById(id)) pdfCache.delete(id);
+      for(const id of [...BYTES.keys()]) if(!fileById(id)) BYTES.delete(id);
+      clearStale(); STALE=false; $("#stamp").classList.remove("stale");
+      let moved=false; const mv=()=>moved=true;
+      ["wheel","touchstart","keydown"].forEach(ev=>addEventListener(ev,mv,{once:true,passive:true}));
+      const p=renderView();
+      applyAnchor(a);
+      p.then(()=>{ if(!moved) applyAnchor(a); }).catch(()=>{});
+      paintStamp();
+      toast("內容已自動更新為最新版（"+stampFmt(doc.updated)+"）",3500);
+      dg("自動更新",true,(why==="gone"?"檔案被換掉，":"")+"已換成 "+stampFmt(doc.updated)+" 的內容");
+      pruneCache();
+      return true;
+    }catch(e){ return false; }
+    finally{ healing=null; }
+  })();
+  return healing;
+}
+
+/* 換掉／刪掉的舊檔先留 24 小時，讓還沒更新的舊頁面照樣讀得到；之後後台存檔時才真的刪 */
+const TRASH_MS=24*3600*1000;
+function trashBlob(f){
+  pdfCache.delete(f.id); BYTES.delete(f.id);
+  if(!CLOUD) return Store.delBlob(f).catch(()=>{});
+  doc.trash=Array.isArray(doc.trash)?doc.trash:[];
+  if(!doc.trash.some(x=>x.id===f.id)) doc.trash.push({id:f.id,t:Date.now()});
+}
+async function purgeTrash(){
+  if(!CLOUD||!Array.isArray(doc.trash)||!doc.trash.length) return;
+  const now=Date.now(), keep=[], due=[];
+  doc.trash.forEach(x=>(now-x.t>TRASH_MS?due:keep).push(x));
+  if(!due.length) return;
+  for(const x of due){
+    try{ await cloudWrite("remove",DB_ROOT+"/blobs/"+x.id); }catch(e){ keep.push(x); }
+  }
+  doc.trash=keep;
+}
 
 /* 雲端上的內容被別人改過時，這一頁（前台或後台都算）要立刻知道。
    後台特別重要：存檔是整份蓋過去，手上拿舊的又按存檔，會把別人的修改洗掉。 */
 let STALE=false, overwriteOK=false;
 function markStale(t){
+  if(STALE) return;
+  /* V88：前台不再只是提醒，直接換成最新內容；放大中或換不成功才顯示提醒列 */
+  if(!admin&&CLOUD&&!CODE_OLD){
+    softRefresh("stale").then(ok=>{ if(!ok&&!STALE&&doc&&doc.updated!==t) showStale(t); });
+    return;
+  }
+  showStale(t);
+}
+function showStale(t){
   if(STALE) return;
   STALE=true;
   $("#stamp").classList.add("stale");
@@ -2128,7 +2235,7 @@ function renderAdmin(){
       <div class="note" style="background:#F2F6FA;border-color:#C9DCEA;color:#1B4C74">
         <b>後台沒有專屬網址。</b>要進來改東西，在上面任一條網址上連點右上角的版號五下，就會跳出密碼框。
         所以這兩條網址直接發給長官是安全的。</div>
-      <div class="note">改完後台之後，已經開著的前台分頁要重新整理才會變。<br>前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
+      <div class="note">改完後台之後，已經開著的前台分頁會在 1 分鐘內自動換成最新內容（切回分頁時馬上檢查）。換掉或刪掉的舊檔會在雲端多留 24 小時才清掉。<br>前台不需要密碼，長官點開就能看。後台要輸入密碼（版號連點五下叫出入口），資料庫規則只認登入成功的內部帳號能寫入。</div>
     </div>
 
     <div class="panel">
@@ -2285,6 +2392,7 @@ function renderAdmin(){
     if(!confirm("再確認一次：這個動作沒辦法復原。")) return;
     if(prompt('確定的話請輸入「清空」兩個字')!=="清空") return toast("已取消");
     for(const f of allFiles()) if(f.kind!=="web") await Store.delBlob(f);
+    for(const x of (doc.trash||[])) await Store.delBlob({id:x.id}).catch(()=>{});
     doc=blankDoc();activeSec=null;pdfCache.clear();
     await save();renderAdmin();renderView();toast("已清空")};
   bindDrop(); bindWebAdd(); renderSecList();
@@ -2453,7 +2561,7 @@ function renderSecList(){
     }else if(d.sdel){
       const s=secById(d.sdel);
       if(s.files.length&&!confirm("「"+s.title+"」裡有 "+s.files.length+" 份檔案，要一起刪掉嗎？")) return;
-      for(const f of s.files) await Store.delBlob(f);
+      for(const f of s.files) if(f.kind!=="web") trashBlob(f);
       doc.sections=doc.sections.filter(x=>x.id!==d.sdel);
       if(activeSec===d.sdel) activeSec=null;
     }else if(d.fup||d.fdn){
@@ -2462,7 +2570,7 @@ function renderSecList(){
     }else if(d.fdel){
       const s=secOf(d.fdel),f=s.files.find(x=>x.id===d.fdel);
       if(!confirm("刪除「"+f.name+"」？")) return;
-      if(f.kind!=="web") await Store.delBlob(f);
+      if(f.kind!=="web") trashBlob(f);
       s.files=s.files.filter(x=>x.id!==d.fdel);
       pdfCache.delete(d.fdel);
     }else if(d.gadd){
@@ -2549,10 +2657,11 @@ async function replaceFile(fid,file){
     }
     await Store.putBlob(newId,file,pct=>{ if(fill) fill.style.width=(pct*100)+"%"; });
     Object.assign(f,{id:newId,name:file.name,kind,size:file.size,pages,jump:clamp(f.jump||1,1,pages)});
+    trashBlob(old);   // 舊檔先留 24 小時，還開著舊頁面的人照樣看得到
     if(await save()===false){ Object.assign(f,{id:old.id,name:old.name,kind:old.kind,size:old.size,pages:old.pages,jump:old.jump});
+      doc.trash=(doc.trash||[]).filter(x=>x.id!==old.id);
       Store.delBlob({id:newId}).catch(()=>{}); throw new Error("清單沒存進雲端，已還原成舊檔"); }
     pdfCache.delete(old.id);
-    Store.delBlob(old).catch(()=>{});
     toast("已換好「"+nm+"」的附件",3500);
   }catch(err){ toast("換附件失敗："+err.message,6000); }
   finally{
@@ -2616,6 +2725,10 @@ async function save(){
   }
   SAVING++;
   try{
+    if(CLOUD&&admin){
+      doc.minVer=Math.max(+doc.minVer||0,APP_VER);   // 存過一次，開著舊版程式的頁面就會自動換新版
+      await purgeTrash();
+    }
     await Store.saveDoc(doc); paintStamp();
     /* 存完回頭問雲端一次：對不上就是這次沒寫進去，不要讓後台自己以為存好了 */
     if(CLOUD){
@@ -2718,7 +2831,10 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V87");
+  dg("版本","","V88");
+  /* 重新整理時加的 _r 亂數用完就從網址拿掉，複製網址給別人才乾淨 */
+  if(new URLSearchParams(location.search).has("_r")){
+    const u=new URL(location.href); u.searchParams.delete("_r"); history.replaceState(null,"",u.href); }
   dg("網址","",location.href.slice(0,90));
   needLib("pdfjs").catch(()=>{});   // 跟讀資料同時開始載，不拖慢、也不會擋住畫面
   dg("開啟方式", location.protocol!=="file:", location.protocol==="file:"
@@ -2741,7 +2857,8 @@ $("#verBadge").onclick=()=>{
         dg("要做的事","","被資料庫規則擋住。Realtime Database → 規則，確認 dossier 節點的 .read 有放行已登入使用者。");
       throw e;
     }
-    if(!doc||!Array.isArray(doc.sections)) doc=blankDoc();   // 前台不寫入；離線時寫入會一直卡住
+    if(!doc||!Array.isArray(doc.sections)) doc=blankDoc();
+    if(versionGate(doc)) dg("程式版本",false,"雲端要求 V"+doc.minVer+"，這頁是 V"+APP_VER);   // 前台不寫入；離線時寫入會一直卡住
     doc.sections.forEach(s=>{s.files=s.files||[];ensureFolders(s)});
     ensureStats();
     watchCloud();
