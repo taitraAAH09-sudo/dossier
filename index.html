@@ -490,7 +490,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V89</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V90</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -578,7 +578,8 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V89
+   活動專卷 V90
+   V90：點上方活動提醒或左側標籤，會一路盯住目標直到上面的檔案都載完，不再只跳到一半；你自己一捲就放手
    V89：1. 前台抓不到檔案時先自動重讀目錄；重讀後清單還是指向那份檔案＝雲端真的缺檔，改寫清楚原因（F5 也不會好，要後台重傳），不再一直顯示「正在載入最新版…」
         2. 後台一進來就檢查每一份檔案在雲端還在不在，缺檔的那一列標紅＋最上面列出清單，按「⇄ 換附件」補傳即可
            （上傳的那台裝置自己有存一份，所以後台自己看都正常，只有別人看不到）
@@ -841,9 +842,37 @@ document.addEventListener("click",e=>{
   const b=e.target.closest("[data-soon]"); if(!b) return;
   const f=fileById(b.dataset.soon); if(!f) return;
   const s=doc.sections.find(x=>x.files.some(y=>y.id===f.id)); if(!s) return;
-  const go=()=>{ const el=document.getElementById("cap-"+f.id); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };
-  if(activeSec!==s.id){ openSection(s.id); setTimeout(go,400); } else go();
+  if(activeSec!==s.id) openSection(s.id,true);
+  goToFile(f);
 });
+
+/* V90：跳到某一份檔案，並且「盯住」它直到上面的檔案都載完。
+   以前只捲一次：那一刻上面的 PDF／圖片還沒載完、高度是空的，載完一撐開，目標就被往下推，
+   看起來像只跳到一半。現在上面每撐開一次就重新對準，直到畫面穩定（或你自己動手捲）為止。 */
+let followStop=null;
+function goToFile(f){
+  if(followStop) followStop();
+  const target=()=>(f.kind==="pdf"&&(f.jump||1)>1
+      ?document.getElementById("pg-"+f.id+"-"+clamp(f.jump,1,f.pages||1)):null)
+    ||document.getElementById("cap-"+f.id);
+  const align=()=>{ const el=target(); if(el) el.scrollIntoView({behavior:"auto",block:"start"}); };
+  align();
+  const pane=$("#viewPane");
+  let lastH=pane.scrollHeight, lastChange=Date.now(), done=false;
+  const ro=new ResizeObserver(()=>{ if(done) return;
+    if(pane.scrollHeight!==lastH){ lastH=pane.scrollHeight; lastChange=Date.now(); align(); } });
+  ro.observe(pane);
+  const tick=setInterval(()=>{ if(done) return; align();
+    /* 畫面 2 秒沒再變、或已經盯了 15 秒就放手 */
+    if(Date.now()-lastChange>2000||Date.now()-t0>15000) stop(); },300);
+  const t0=Date.now();
+  const user=e=>{ if(e.type==="keydown"&&!/Arrow|Page|Home|End|Space| /.test(e.key)) return; stop(); };
+  ["wheel","touchstart","keydown","mousedown"].forEach(ev=>addEventListener(ev,user,{passive:true,capture:true}));
+  function stop(){ if(done) return; done=true; ro.disconnect(); clearInterval(tick);
+    ["wheel","touchstart","keydown","mousedown"].forEach(ev=>removeEventListener(ev,user,{capture:true}));
+    if(followStop===stop) followStop=null; }
+  followStop=stop;
+}
 setInterval(paintSoon,30000);
 
 let schFid=null;
@@ -1519,17 +1548,16 @@ $("#rail").addEventListener("click",e=>{
   const fbn=e.target.closest("[data-file]");
   if(fbn){
     const f=fileById(fbn.dataset.file);
-    const el=document.getElementById("pg-"+f.id+"-"+clamp(f.jump||1,1,f.pages||1))
-          ||document.getElementById("cap-"+f.id);
-    if(el) el.scrollIntoView({behavior:"smooth",block:"start"});
+    if(f) goToFile(f);
     document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x===fbn));
   }
 });
-function openSection(id){
+function openSection(id,noTop){
   const s=secById(id);
   if(!s||!edOn(s,EDITION)) return;
+  if(followStop) followStop();
   activeSec=id; renderRail(); renderView();
-  window.scrollTo({top:0,behavior:"smooth"});
+  if(!noTop) window.scrollTo({top:0,behavior:"smooth"});
 }
 
 /* ---------- 捲動時，左側標籤跟著亮目前看到的檔案 ---------- */
@@ -2168,7 +2196,7 @@ function hardReload(){
 $("#btnReload").onclick=hardReload;
 
 /* ---------- V88：舊頁面自動換成最新內容 ---------- */
-const APP_VER=89;
+const APP_VER=90;
 let healing=null, lastHeal=0, pendingHeal=false, CODE_OLD=false;
 /* 雲端記錄的「最低程式版本」比這頁新 → 這頁是舊程式，自動重新載入（5 分鐘內只自動一次，避免快取沒更新時一直跳） */
 function versionGate(d){
@@ -2963,7 +2991,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V89");
+  dg("版本","","V90");
   /* 重新整理時加的 _r 亂數用完就從網址拿掉，複製網址給別人才乾淨 */
   if(new URLSearchParams(location.search).has("_r")){
     const u=new URL(location.href); u.searchParams.delete("_r"); history.replaceState(null,"",u.href); }
