@@ -55,6 +55,12 @@ button{cursor:pointer;border:0;background:none}
   border-top:1px solid var(--rule);font-size:12px;color:var(--ink-2)}
 .stamp .dot{width:6px;height:6px;border-radius:50%;background:#4E7A5B;flex:0 0 6px}
 .stamp.stale{background:#FCF4E4;border-top-color:#EADFC6}
+.fitem.missing{border-color:#D9A3A3!important;background:#FBF1F1!important}
+.misstag{color:#A23B3B;font-weight:700;font-size:12px;white-space:nowrap}
+.misspanel{border:1px solid #D9A3A3;background:#FBF1F1}
+.misspanel h3{color:#A23B3B}
+.misspanel ul{margin:6px 0 12px 18px;font-size:13px;line-height:1.8}
+.misspanel i{color:var(--ink-3);font-style:normal;font-size:12px}
 .stamp.stale .dot{background:var(--danger)}
 .stamp.stale #stampTx{color:#8A5A22;font-weight:600}
 .stamp.stale .re{background:var(--steel);border-color:var(--steel);color:#fff;font-weight:600}
@@ -484,7 +490,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V88</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V89</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -572,7 +578,12 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V88
+   活動專卷 V89
+   V89：1. 前台抓不到檔案時先自動重讀目錄；重讀後清單還是指向那份檔案＝雲端真的缺檔，改寫清楚原因（F5 也不會好，要後台重傳），不再一直顯示「正在載入最新版…」
+        2. 後台一進來就檢查每一份檔案在雲端還在不在，缺檔的那一列標紅＋最上面列出清單，按「⇄ 換附件」補傳即可
+           （上傳的那台裝置自己有存一份，所以後台自己看都正常，只有別人看不到）
+        3. 清 24 小時舊檔前再確認一次：清單還在用的檔案絕對不刪；換附件存檔沒確認成功時，先問雲端，雲端已經改好就不刪新檔
+        4. 手機放大：兩指縮放時以手指下面那一頁為準定位，放開不再跳到別的地方；縮放中鎖住捲動、不吸附頁面，不再抖
    V88：同事開著舊頁面也不會白掉——
         1. 前台發現雲端內容變了（每 60 秒、切回分頁時檢查），自動換成最新內容，停在原本看的那一份
         2. 抓檔抓不到（檔案剛被換掉／刪掉）就自己重讀目錄，不再留一塊空白；圖片讀不出來會寫原因
@@ -728,14 +739,14 @@ async function restAnonToken(fresh){
   try{ localStorage.setItem("dossierAnon",JSON.stringify({t:j.idToken,exp:Date.now()+(+j.expiresIn||3600)*1000})); }catch(e){}
   return REST_TOKEN;
 }
-async function restGet(path,retried){
+async function restGet(path,retried,q){
   let tok=null;
   if(ADMIN_AUTH){ try{ tok=await adminToken(retried); }catch(e){} }
   if(!tok&&!REST_MODE){ try{ const u=fb&&fb.auth.currentUser;
     if(u) tok=await withTimeout(u.getIdToken(),5000,"取得憑證"); }catch(e){} }
   if(!tok) tok=await restAnonToken(retried);
-  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok)),30000,"備援讀取");
-  if((r.status===401||r.status===403)&&!retried){ REST_TOKEN=null; return restGet(path,true); }  // 憑證過期就換一張
+  const r=await withTimeout(fetch(FIREBASE_CONFIG.databaseURL.replace(/\/$/,"")+"/"+path+".json?auth="+encodeURIComponent(tok)+(q||"")),30000,"備援讀取");
+  if((r.status===401||r.status===403)&&!retried){ REST_TOKEN=null; return restGet(path,true,q); }  // 憑證過期就換一張
   if(!r.ok) throw new Error("備援讀取失敗 HTTP "+r.status+(r.status===401||r.status===403?"（PERMISSION_DENIED，資料庫規則擋住）":""));
   return r.json();
 }
@@ -1148,8 +1159,18 @@ const Store={
           const hit=await idb("blobs","readonly",s=>s.get(CACHE_PFX+f.id)).catch(()=>null);
           if(hit&&hit.byteLength){ cacheCount(true,hit.byteLength); return new Uint8Array(hit); }
           const r=await cloudGet(DB_ROOT+"/blobs/"+f.id,30000);
-          if(!r){ const e=new Error("這份檔案剛在後台換過，正在載入最新版…"); e.gone=true;
-            softRefresh("gone").then(ok=>{ if(!ok&&$("#lb").classList.contains("on")) pendingHeal=true; });
+          if(!r){
+            /* V89：先重讀目錄。換成新內容就會整頁重畫，這一格自然換掉；
+               重讀完清單還是指向這份 → 雲端真的缺這份檔案，照實說，不要讓人一直等 */
+            const lbOn=$("#lb").classList.contains("on");
+            const ok=await softRefresh("gone").catch(()=>false);
+            let msg;
+            if(ok&&!fileById(f.id)) msg="已換成最新內容，重新載入中…";
+            else if(lbOn){ pendingHeal=true; msg="這份檔案在後台換過，關掉放大視窗後會自動換成最新版"; }
+            else if(STALE) msg="後台已經更新過內容，點最上面的「重新整理」載入最新版";
+            else msg="雲端上找不到這份檔案（清單有，檔案本體不見了）。請通知專卷管理員到後台按「⇄ 換附件」重新上傳這一份；按 F5 也不會好";
+            const e=new Error(msg); e.gone=true;
+            if(!(ok&&!fileById(f.id))&&!lbOn&&!STALE) dg("缺檔",false,(f.label||f.name)+"（"+f.id+"）雲端找不到");
             throw e; }
           const bytes=b64ToBytes(Object.keys(r).sort().map(k=>r[k]).join(""));
           await idb("blobs","readwrite",s=>s.put(bytes.slice().buffer,CACHE_PFX+f.id)).catch(()=>{});  // 裝置空間不夠就算了，照樣顯示
@@ -1679,7 +1700,7 @@ function lbCount(){
   $("#lbPct").textContent=Math.round(lbZoom*100)+"%";
   $("#lbOut").disabled=(lbZoom<=LB_MIN+.001); $("#lbIn").disabled=(lbZoom>=LB_MAX-.001);
   $("#lbFit").textContent=lbFit?"整頁":"連續";
-  lbBody().classList.toggle("snap",lbFit&&Math.abs(lbZoom-1)<.01);
+  lbSnapSync();
   const fid=el?el.dataset.file:null;
   $("#lbRail").querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.jump===fid));
 }
@@ -1806,17 +1827,55 @@ async function lbRender(el,force){
       el.innerHTML='<div class="lb-load">這一頁讀不出來：'+esc(err.message)+"</div>";
   }finally{ el.dataset.busy="0"; }
 }
-function lbSetZoom(z,cx,cy){
+/* V89：縮放定位改成「以手指／游標下面那一頁為準」。
+   以前用 捲動位置×倍率 去算，但章節標題、頁與頁的間距不會跟著放大，越往後面的頁差越多，
+   放開手指就跳到別的地方。現在記住那一點落在哪一頁的哪個比例，縮放完把同一點對回原位。 */
+let PINCH=false;
+function lbSnapSync(){
+  const b=lbBody(), want=lbFit&&Math.abs(lbZoom-1)<.01&&!PINCH;
+  if(!want){ window.__lbSnapArm=false; b.classList.remove("snap"); return; }
+  if(b.classList.contains("snap")) return;
+  /* 不在縮放完當下開吸附（會把剛對好的位置吸到頁首，看起來就是「跳走」），
+     等使用者下一次自己開始捲動才開 */
+  window.__lbSnapArm=true;
+}
+["touchstart","wheel","keydown"].forEach(ev=>addEventListener(ev,e=>{
+  if(!window.__lbSnapArm||PINCH) return;
+  if(ev==="touchstart"&&e.touches&&e.touches.length>1) return;
+  window.__lbSnapArm=false;
+  if(lbFit&&Math.abs(lbZoom-1)<.01&&$("#lb").classList.contains("on")) lbBody().classList.add("snap");
+},{passive:true,capture:true}));
+function lbAnchorAt(ax,ay){
+  const b=lbBody(), br=b.getBoundingClientRect(), x=br.left+ax, y=br.top+ay;
+  let best=null, bd=Infinity;
+  for(const el of lbPages){
+    const r=el.getBoundingClientRect(); if(!r.height) continue;
+    const d=y<r.top?r.top-y:y>r.bottom?y-r.bottom:0;
+    if(d<bd){ bd=d; best={el,r}; if(!d) break; }
+    else if(best&&r.top>y) break;
+  }
+  if(!best) return null;
+  return {el:best.el, fx:(x-best.r.left)/best.r.width, fy:(y-best.r.top)/best.r.height};
+}
+function lbAnchorApply(a,ax,ay){
+  if(!a||!a.el.isConnected) return;
+  const b=lbBody(), br=b.getBoundingClientRect(), r=a.el.getBoundingClientRect();
+  b.scrollLeft+=(r.left+a.fx*r.width)-(br.left+ax);
+  b.scrollTop +=(r.top +a.fy*r.height)-(br.top +ay);
+}
+function lbSetZoom(z,cx,cy,anchor,tx,ty){
   z=Math.min(LB_MAX,Math.max(LB_MIN,z));
   if(Math.abs(z-lbZoom)<.002) return;
-  const b=lbBody(),old=lbZoom;
+  const b=lbBody();
   const ax=(cx==null?b.clientWidth/2:cx), ay=(cy==null?b.clientHeight/2:cy);
-  const px=b.scrollLeft+ax, py=b.scrollTop+ay;
+  const a=anchor||lbAnchorAt(ax,ay);
+  clearTimeout(window.__lbSnapBack);
+  b.classList.remove("snap");                // 先關吸附，再改位置
   lbZoom=z; lbRelayout(true);
-  const k=z/old;
-  b.scrollLeft=px*k-ax; b.scrollTop=py*k-ay;
+  lbAnchorApply(a,tx==null?ax:tx,ty==null?ay:ty);
 }
 function lbClose(){
+  PINCH=false; lbBody().style.overflow="";
   lbPages.forEach(p=>lbIO.unobserve(p));
   lbPages=[]; lbCur=0; lbSecId=null;
   lbBody().innerHTML=""; $("#lbRail").innerHTML="";
@@ -1918,43 +1977,71 @@ lbBody().addEventListener("wheel",e=>{
   window.addEventListener("pointerup",()=>{ drag=null; b.classList.remove("grab"); });
 })();
 
-/* 手機：兩指縮放。放大／縮小過程中只用 CSS 位移預覽（不搬動任何頁面、不重畫），
-   放開手指那一刻才真正套用一次新的倍率，滑動才不會卡頓 */
+/* 手機：兩指縮放。縮放中只用 CSS 預覽（不搬動頁面、不重畫），放開手指才真正套用一次。
+   V89：
+   - 縮放中鎖住捲動（不然瀏覽器一邊捲、我們一邊縮，就是抖）
+   - 縮小預覽時內容變短，捲動位置會被瀏覽器硬拉回來 → 放一塊撐高度的透明墊片，預覽期間捲動範圍不變
+   - 預覽跟著兩指中心移動；放開時以「一開始兩指中心下面那一頁的那一點」對回兩指最後的位置
+   - 縮放期間關掉頁面吸附 */
 (function(){
-  const b=lbBody(); let pin=null;
+  const b=lbBody(); let pin=null, raf=0;
   const dist=t=>Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
-  function liveScale(){
-    const m=/scale\(([\d.]+)\)/.exec(lbStack().style.transform);
-    return m?parseFloat(m[1]):1;
+  const mid=t=>({x:(t[0].clientX+t[1].clientX)/2,y:(t[0].clientY+t[1].clientY)/2});
+  function paint(){
+    raf=0; if(!pin) return;
+    lbStack().style.transform="translate("+(pin.mx-pin.cx)+"px,"+(pin.my-pin.cy)+"px) scale("+pin.s+")";
+  }
+  function cleanup(){
+    if(raf){ cancelAnimationFrame(raf); raf=0; }
+    const st=lbStack()&&lbStack().style;
+    if(st){ st.transform=""; st.transformOrigin=""; st.willChange=""; }
+    pin&&pin.pad&&pin.pad.remove();
+    b.style.overflow="";
+    PINCH=false;
   }
   function commit(){
     if(!pin) return;
-    const scale=liveScale();
+    const p=pin; pin=null;
     const st=lbStack().style; st.transform=""; st.transformOrigin=""; st.willChange="";
-    const z=Math.min(LB_MAX,Math.max(LB_MIN,pin.z*scale));
+    const z=Math.min(LB_MAX,Math.max(LB_MIN,p.z*p.s));
     const r=b.getBoundingClientRect();
-    lbSetZoom(z,pin.cx-r.left,pin.cy-r.top);
-    pin=null;
+    if(Math.abs(z-lbZoom)>=.002)
+      lbSetZoom(z,p.cx-r.left,p.cy-r.top,p.anchor,p.mx-r.left,p.my-r.top);
+    else if(p.anchor) lbAnchorApply(p.anchor,p.mx-r.left,p.my-r.top);
+    p.pad&&p.pad.remove();
+    b.style.overflow="";
+    PINCH=false; lbSnapSync();
   }
   b.addEventListener("touchstart",e=>{
-    if(e.touches.length===2){
-      const t=e.touches,cx=(t[0].clientX+t[1].clientX)/2,cy=(t[0].clientY+t[1].clientY)/2;
-      const sr=lbStack().getBoundingClientRect();
-      pin={d:dist(t),z:lbZoom,cx,cy};
-      const st=lbStack().style;
-      st.transformOrigin=(cx-sr.left)+"px "+(cy-sr.top)+"px";
-      st.willChange="transform";
-    }
+    if(e.touches.length!==2||!lbStack()) return;
+    if(pin) return;
+    PINCH=true;
+    clearTimeout(window.__lbSnapBack);
+    b.classList.remove("snap");
+    const m=mid(e.touches), br=b.getBoundingClientRect();
+    /* 墊片：撐住目前的捲動範圍 */
+    const pad=document.createElement("div");
+    pad.style.cssText="position:absolute;left:0;top:0;width:"+b.scrollWidth+"px;height:"+b.scrollHeight+"px;pointer-events:none;visibility:hidden";
+    b.appendChild(pad);
+    b.style.overflow="hidden";            // 鎖住捲動，位置不變
+    const sr=lbStack().getBoundingClientRect();
+    pin={d:dist(e.touches)||1,z:lbZoom,cx:m.x,cy:m.y,mx:m.x,my:m.y,s:1,pad,
+         anchor:lbAnchorAt(m.x-br.left,m.y-br.top)};
+    const st=lbStack().style;
+    st.transformOrigin=(m.x-sr.left)+"px "+(m.y-sr.top)+"px";
+    st.willChange="transform";
   },{passive:true});
   b.addEventListener("touchmove",e=>{
-    if(!pin||e.touches.length!==2) return;
-    e.preventDefault();
+    if(!pin) return;
+    if(e.cancelable) e.preventDefault();
+    if(e.touches.length!==2) return;
     const raw=dist(e.touches)/pin.d;
-    const clamped=Math.min(LB_MAX/pin.z,Math.max(LB_MIN/pin.z,raw));
-    lbStack().style.transform="scale("+clamped+")";
+    pin.s=Math.min(LB_MAX/pin.z,Math.max(LB_MIN/pin.z,raw));
+    const m=mid(e.touches); pin.mx=m.x; pin.my=m.y;
+    if(!raf) raf=requestAnimationFrame(paint);
   },{passive:false});
-  b.addEventListener("touchend",e=>{ if(e.touches.length<2) commit(); },{passive:true});
-  b.addEventListener("touchcancel",commit,{passive:true});
+  b.addEventListener("touchend",e=>{ if(pin&&e.touches.length<2) commit(); },{passive:true});
+  b.addEventListener("touchcancel",()=>{ if(pin) commit(); else cleanup(); },{passive:true});
 })();
 
 lbBody().addEventListener("dblclick",e=>{
@@ -1971,7 +2058,11 @@ $("#lbPct").onclick=()=>{ lbSetZoom(1); lbRelayout(true); };
 $("#lbFit").onclick=()=>{ lbFit=!lbFit; lbZoom=1; lbRelayout(false); };
 $("#lbClose").onclick=lbClose;
 window.addEventListener("resize",()=>{ clearTimeout(window.__lbRz);
-  window.__lbRz=setTimeout(()=>lbRelayout(true),180); });
+  window.__lbRz=setTimeout(()=>{
+    if(PINCH||!$("#lb").classList.contains("on")) return;
+    const b=lbBody(), ax=b.clientWidth/2, ay=b.clientHeight/2, a=lbAnchorAt(ax,ay);
+    lbRelayout(true); lbAnchorApply(a,ax,ay);
+  },180); });
 document.addEventListener("keydown",e=>{
   if(!$("#lb").classList.contains("on")) return;
   if(e.key==="Escape"){ lbClose(); return; }
@@ -2077,7 +2168,7 @@ function hardReload(){
 $("#btnReload").onclick=hardReload;
 
 /* ---------- V88：舊頁面自動換成最新內容 ---------- */
-const APP_VER=88;
+const APP_VER=89;
 let healing=null, lastHeal=0, pendingHeal=false, CODE_OLD=false;
 /* 雲端記錄的「最低程式版本」比這頁新 → 這頁是舊程式，自動重新載入（5 分鐘內只自動一次，避免快取沒更新時一直跳） */
 function versionGate(d){
@@ -2151,12 +2242,36 @@ function trashBlob(f){
 async function purgeTrash(){
   if(!CLOUD||!Array.isArray(doc.trash)||!doc.trash.length) return;
   const now=Date.now(), keep=[], due=[];
-  doc.trash.forEach(x=>(now-x.t>TRASH_MS?due:keep).push(x));
+  /* V89：清單裡還在用的編號，不管為什麼會出現在待刪清單，一律不刪（直接從待刪清單拿掉） */
+  const inUse=new Set(allFiles().map(f=>f.id));
+  doc.trash.forEach(x=>{ if(inUse.has(x.id)) return; (now-x.t>TRASH_MS?due:keep).push(x); });
+  if(doc.trash.length!==keep.length+due.length) dg("清舊檔",true,"有 "+(doc.trash.length-keep.length-due.length)+" 份還在使用，已從待刪清單移除");
+  doc.trash=keep.concat(due);
   if(!due.length) return;
   for(const x of due){
     try{ await cloudWrite("remove",DB_ROOT+"/blobs/"+x.id); }catch(e){ keep.push(x); }
   }
   doc.trash=keep;
+}
+
+/* V89：後台檢查每一份檔案在雲端還在不在（shallow 只抓編號，幾 KB，不耗流量）。
+   上傳的那台裝置自己存了一份，所以後台本人看都正常，別人卻讀不到——這個檢查就是抓這種情況 */
+const MISSING=new Set(); let blobCheckAt=0;
+async function checkBlobs(force){
+  if(!CLOUD||!admin||!doc) return;
+  if(!force&&Date.now()-blobCheckAt<20000) return;
+  blobCheckAt=Date.now();
+  try{
+    const keys=await restGet(DB_ROOT+"/blobs",false,"&shallow=true")||{};
+    const miss=allFiles().filter(f=>f.kind!=="web"&&!keys[f.id]);
+    const before=[...MISSING].sort().join();
+    MISSING.clear(); miss.forEach(f=>MISSING.add(f.id));
+    const e=diag.find(d=>d.k==="雲端檔案");
+    const msg=miss.length?"缺 "+miss.length+" 份："+miss.map(f=>f.label||f.name).join("、"):"全部 "+allFiles().filter(f=>f.kind!=="web").length+" 份都在";
+    if(e){ e.state=!miss.length; e.msg=msg; } else dg("雲端檔案",!miss.length,msg);
+    if(before!==[...MISSING].sort().join()&&admin) renderAdmin();
+    if(miss.length) toast("⚠ 有 "+miss.length+" 份檔案雲端找不到，別人會看不到，請在紅色那一列按「⇄ 換附件」補傳",7000);
+  }catch(err){ dg("雲端檔案",false,"檢查失敗："+err.message); }
 }
 
 /* 雲端上的內容被別人改過時，這一頁（前台或後台都算）要立刻知道。
@@ -2221,7 +2336,14 @@ addEventListener("resize",measureTop);
 /* ---------- 後台 ---------- */
 function renderAdmin(){
   ensureStats();
+  const missList=allFiles().filter(f=>MISSING.has(f.id));
   $("#adminPane").innerHTML=`
+    ${missList.length?`<div class="panel misspanel">
+      <h3>⚠ 有 ${missList.length} 份檔案雲端找不到</h3>
+      <p class="sub">清單上有，但雲端沒有檔案本體，長官和同事打開會讀不出來（你這台裝置可能因為存過一份所以看起來正常）。請在下面標紅的那一列按「⇄ 換附件」，選同一個檔案重新上傳即可。</p>
+      <ul>${missList.map(f=>`<li>${esc(f.label||f.name)}　<i>${esc(f.name)}</i></li>`).join("")}</ul>
+      <button class="btn" id="btnBlobCheck">重新檢查</button>
+    </div>`:""}
     <div class="panel">
       <h3>網址</h3>
       <p class="sub">兩條給長官的網址內容不同，但都是同一份資料。畫面上都不會有後台按鈕。</p>
@@ -2471,7 +2593,7 @@ function renderSecList(){
         <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
       </div>
       ${s.files.length? s.files.map((f,fi)=>`
-        <div class="fitem ${edClass(f)}">
+        <div class="fitem ${edClass(f)}${MISSING.has(f.id)?" missing":""}">
           <div class="fr1">
             <input class="numi" value="${esc(f.num||"")}" data-fnum="${f.id}" maxlength="10"
                    placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":f.kind==="web"?"網":"檔"}"
@@ -2493,6 +2615,7 @@ function renderSecList(){
             <label>跳到第 <input class="p" type="number" min="1" max="${f.pages||1}" value="${clamp(f.jump||1,1,f.pages||1)}" data-fjump="${f.id}" aria-label="跳到第幾頁"> 頁</label>
             ${f.kind==="web"&&isGurus(f.url)?`<span class="roomsw" title="切換這一份顯示哪個 Room">${["1","2"].map(r=>`<button data-froom="${f.id}" data-r="${r}" class="${roomOf(f.url)===r?"on":""}">Room ${r}</button>`).join("")}</span>`:""}
             <span class="fn" title="${esc(f.kind==="web"?f.url:f.name)}">${f.kind==="web"?"🔗 "+esc(f.url):esc(f.name)}</span>
+            ${MISSING.has(f.id)?`<span class="misstag" title="清單上有這一份，但雲端找不到檔案本體，別的裝置會讀不出來">⚠ 雲端缺檔</span>`:""}
             ${f.kind==="web"?"":`<button class="btn frep" data-frep="${f.id}" title="選一個新檔案換掉這一份，編號、標題、版本、資料夾、時段都不變">⇄ 換附件</button>`}
           </div>
         </div>`).join("") : '<div class="lnone">這一章還沒有檔案</div>'}
@@ -2658,16 +2781,24 @@ async function replaceFile(fid,file){
     await Store.putBlob(newId,file,pct=>{ if(fill) fill.style.width=(pct*100)+"%"; });
     Object.assign(f,{id:newId,name:file.name,kind,size:file.size,pages,jump:clamp(f.jump||1,1,pages)});
     trashBlob(old);   // 舊檔先留 24 小時，還開著舊頁面的人照樣看得到
-    if(await save()===false){ Object.assign(f,{id:old.id,name:old.name,kind:old.kind,size:old.size,pages:old.pages,jump:old.jump});
+    if(await save()===false){
+      /* V89：「沒確認到」不等於「沒寫進去」。先問雲端：清單已經指向新檔，就當成功，絕對不能刪新檔 */
+      let cloudHas=null;
+      try{ const m=await cloudGet(DB_ROOT+"/meta",15000);
+        cloudHas=!!(m&&Array.isArray(m.sections)&&m.sections.some(s=>(s.files||[]).some(x=>x.id===newId))); }catch(e){}
+      if(cloudHas){ pdfCache.delete(old.id); MISSING.delete(old.id); toast("已換好「"+nm+"」的附件（雲端已確認）",4000); return; }
+      Object.assign(f,{id:old.id,name:old.name,kind:old.kind,size:old.size,pages:old.pages,jump:old.jump});
       doc.trash=(doc.trash||[]).filter(x=>x.id!==old.id);
-      Store.delBlob({id:newId}).catch(()=>{}); throw new Error("清單沒存進雲端，已還原成舊檔"); }
+      if(cloudHas===false) Store.delBlob({id:newId}).catch(()=>{});   // 問不到雲端就先留著，不冒險刪
+      throw new Error("清單沒存進雲端，已還原成舊檔"); }
+    MISSING.delete(old.id); MISSING.delete(newId);
     pdfCache.delete(old.id);
     toast("已換好「"+nm+"」的附件",3500);
   }catch(err){ toast("換附件失敗："+err.message,6000); }
   finally{
     UPLOADING--;
     if(bar) setTimeout(()=>{ bar.classList.remove("on"); fill.style.width="0"; },500);
-    renderAdmin();
+    renderAdmin(); checkBlobs(true);
   }
 }
 
@@ -2703,7 +2834,7 @@ async function handleFiles(files){
   }
   }finally{ UPLOADING--; }
   setTimeout(()=>{bar.classList.remove("on");fill.style.width="0"},500);
-  renderAdmin();
+  renderAdmin(); checkBlobs(true);
   if(errs.length){
     toast((ok>0?"加入 "+ok+" 份，":"")+"失敗 "+errs.length+" 份 → "+errs[0],6500);
   }else{
@@ -2756,11 +2887,12 @@ function setMode(a){
   $("#rail").style.display=a?"none":"";
   $("#btnMerge").style.display=a?"none":"";
   $("#btnDiag").style.display=a?"":"none";
-  if(a) renderAdmin(); else renderView();
+  if(a){ renderAdmin(); checkBlobs(true); } else renderView();
   paintSoon();
   window.scrollTo(0,0);
 }
 $("#mView").onclick=()=>setMode(false);
+document.addEventListener("click",e=>{ if(e.target.closest("#btnBlobCheck")) checkBlobs(true).then(()=>{ if(!MISSING.size) toast("檢查完成：全部檔案都在雲端"); }); });
 function openLogin(){
   if(CLOUD){
     $("#pwHint").textContent="輸入 "+PIN_LEN+" 位數字才能上傳與修改。長官看的前台不需要密碼。";
@@ -2831,7 +2963,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V88");
+  dg("版本","","V89");
   /* 重新整理時加的 _r 亂數用完就從網址拿掉，複製網址給別人才乾淨 */
   if(new URLSearchParams(location.search).has("_r")){
     const u=new URL(location.href); u.searchParams.delete("_r"); history.replaceState(null,"",u.href); }
