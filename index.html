@@ -232,6 +232,51 @@ button{cursor:pointer;border:0;background:none}
 .drop.hot{border-color:var(--steel);background:var(--steel-soft)}
 .drop b{display:block;font-size:14.5px;margin-bottom:4px}
 .drop p{margin:0;font-size:12.5px;color:var(--ink-3)}
+/* V91：檔案拖曳排序 */
+.dh{flex:0 0 22px;width:22px;height:29px;display:grid;place-items:center;color:#A9A59B;font-size:15px;cursor:grab;border-radius:6px;user-select:none;-webkit-user-select:none}
+.dh:hover{background:#EAE8E2;color:var(--ink)}
+.fitem.dragging{opacity:.35}
+.fitem.drop-top{box-shadow:inset 0 3px 0 var(--steel)}
+.fitem.drop-bot{box-shadow:inset 0 -3px 0 var(--steel)}
+.weblock{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.weblock .btn{color:var(--ink-3)}
+/* V91：整個資料夾匯入 */
+.dirdrop{border-color:#B9CBDB;background:#F5F8FB}
+.dirnote{margin:10px 0 0;padding-left:18px;font-size:12.5px;color:var(--ink-2);line-height:1.8}
+/* V91：上傳框左邊的閃爍箭頭 */
+.drop{position:relative}
+.cue{position:absolute;right:calc(100% + 34px);top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;
+  white-space:nowrap;font-size:14px;font-weight:700;pointer-events:none}
+.cue.dir{color:#B23A2E}.cue.one{color:#2E7D4F}
+.cue i{font-style:normal;font-size:24px;line-height:1;animation:cueBlink 1s ease-in-out infinite}
+@keyframes cueBlink{50%{opacity:.15;transform:translateX(7px)}}
+@media (max-width:1420px){.cue{position:static;transform:none;justify-content:center;margin:0 0 6px}.cue i{transform:rotate(90deg);animation:none}}
+/* V91：預覽裡拖曳排序 */
+.impf .dh{flex:0 0 18px;width:18px;height:20px;font-size:13px}
+.impf.dragging{opacity:.35}
+.impf.drop-top{box-shadow:inset 0 2px 0 var(--steel)}
+.impf.drop-bot{box-shadow:inset 0 -2px 0 var(--steel)}
+.dirtree{font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.55;background:#F7F6F2;border:1px solid var(--rule);border-radius:8px;padding:9px 12px;margin:10px 0 0;white-space:pre;overflow:auto;color:var(--ink-2)}
+.impopts{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;margin:0 0 12px;padding:10px 12px;background:#F7F6F2;border-radius:8px}
+.impopts label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.implist{max-height:46vh;overflow:auto;border:1px solid var(--rule);border-radius:8px}
+.impch{border-top:1px solid var(--rule)}
+.impch:first-child{border-top:0}
+.impch summary{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;font-size:13.5px;list-style:none}
+.impch summary::-webkit-details-marker{display:none}
+.impch summary b{flex:1;min-width:0;font-weight:650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.impch .pill{font-size:11px;padding:1px 7px;border-radius:99px;background:#EEE;color:#555;white-space:nowrap}
+.impch .pill.new{background:#E4F1E8;color:#2E7D4F}
+.impch .pill.upd{background:#FFF1DC;color:#A0620A}
+.impch .pill.chnew{background:#1B4C74;color:#fff}
+.impch .impto{font-size:12px;color:var(--ink-3);flex:0 0 auto}
+.impch .impsel{flex:0 1 250px;min-width:120px;font-size:12.5px;padding:3px 6px;border:1px solid #8FBAD9;border-radius:6px;background:#EEF5FA;color:#0E3F63;cursor:pointer}
+.impf{display:flex;gap:8px;padding:3px 12px 3px 26px;font-size:12.5px;color:var(--ink-2)}
+.impf:last-child{padding-bottom:9px}
+.impf i{font-style:normal;flex:0 0 38px;font-size:11px;font-weight:650}
+.impf i.new{color:#2E7D4F}.impf i.upd{color:#A0620A}.impf i.skip{color:#999}
+.impf span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.impf em{font-style:normal;color:var(--ink-3)}
 .note{background:#FCF7EC;border:1px solid #EADFC6;border-radius:8px;padding:11px 13px;font-size:12.5px;color:#6B5427;margin-top:12px}
 .note b{color:#5A4520}
 .bar{height:3px;background:var(--rule);border-radius:2px;overflow:hidden;margin-top:10px;display:none}
@@ -481,6 +526,50 @@ button{cursor:pointer;border:0;background:none}
 .soon-item.live:not(.imp) .ic::before{animation:soonBlink 1.6s ease-in-out infinite}
 @keyframes soonBlink{50%{opacity:.35}}
 @media (max-width:860px){.soon{padding:6px;margin-bottom:12px}.soon-item{font-size:12px}}
+/* ---------- V91：展覽數據縮小 ---------- */
+/* 前台卡片 */
+.stats-cards{gap:8px;margin:-10px 0 18px}
+.stat-card{flex:0 1 168px;min-width:128px;padding:9px 12px;border-left-width:3px;border-radius:8px}
+.stat-num b{font-size:20px}
+.stat-num .unit{font-size:12px}
+.stat-delta{font-size:10.5px;padding:2px 6px}
+.stat-label{font-size:12px;margin-top:0}
+.stat-div{margin:6px 0 5px}
+.stat-last{font-size:11px}
+.stat-card.wide{flex:0 1 380px;min-width:260px}
+.vdays{margin-top:8px;gap:4px}
+.vcol{padding:5px 3px 6px}
+.vcol b{font-size:14px}
+.vbar{height:32px}.vbar i{width:9px}
+/* 後台輸入欄：兩欄並排、欄位變矮 */
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.statrow{gap:8px 10px;padding:7px 10px;border-radius:8px}
+.statrow.wide{grid-column:1/-1}
+.sec-block.locked{background:#F7F6F2}
+.lockrow{display:flex;align-items:center;gap:10px}
+.lockrow span{flex:1;min-width:0}
+.lockrow .golink{padding:4px 11px;font-size:12px;text-decoration:none;color:var(--steel);border-color:#C9DCEA;background:#fff}
+.lockrow .golink:hover{background:var(--steel-soft)}
+.sec-block.locked .sec-hd{background:#EFEDE7}
+.statrow.custom{background:#F5F8FB;border-color:#C9DCEA}
+.statname.cname{display:flex;gap:6px;align-items:center}
+.statname.cname input{flex:1;min-width:0;border:1px solid var(--rule);border-radius:6px;padding:4px 8px;font-size:13px;font-weight:600;background:#fff}
+.statname.cname input.cu{flex:0 0 58px;font-weight:400}
+.statadd{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:92px;cursor:pointer;
+  border:1.5px dashed #B9CBDB!important;background:#FCFCFA!important;color:var(--steel);font-size:13.5px}
+.statadd:hover{background:var(--steel-soft)!important}
+.statadd i{font-style:normal;font-size:11.5px;color:var(--ink-3)}
+.statrow .statname{flex:1 1 100%;font-size:13px}
+.statrow .field{flex:0 0 84px;margin:0}
+.statrow .field span{font-size:11px;margin-bottom:2px}
+.statrow .field input{padding:4px 8px;font-size:13px;border-radius:6px}
+.statrow .edt button{width:56px;font-size:10.5px}
+@media (max-width:860px){
+  .stat-card{padding:7px 7px}
+  .stat-num b{font-size:15px}
+  .stat-label{font-size:10px}
+  .statgrid{grid-template-columns:1fr}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -490,7 +579,7 @@ button{cursor:pointer;border:0;background:none}
   <div class="top-in">
     <div class="brand"><b id="hdTitle">活動專卷</b><span id="hdSub"></span></div>
     <span class="edpill" id="edPill"></span>
-    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V90</span>
+    <span class="ver" id="verBadge" title="連點五下開啟後台登入">V92</span>
     <div class="seg" id="segMode" role="group" aria-label="檢視模式" style="display:none">
       <button id="mView" aria-pressed="true">前台閱讀</button>
       <button id="mAdmin" aria-pressed="false">後台管理</button>
@@ -520,6 +609,17 @@ button{cursor:pointer;border:0;background:none}
     <p id="pwHint">後台可以建立章節、上傳檔案、調整標籤要跳到第幾頁。</p>
     <label class="field"><span id="pwLabel">密碼</span><input type="password" id="pwInput" autocomplete="current-password" inputmode="numeric" style="letter-spacing:.5em;font-size:20px;text-align:center"></label>
     <div class="row"><button class="btn" id="pwCancel">取消</button><button class="btn primary" id="pwOk">進入</button></div>
+  </div>
+</div>
+
+<div class="mask" id="impMask">
+  <div class="modal" style="max-width:640px">
+    <h3>資料夾匯入預覽</h3>
+    <p id="impSum">讀取中…</p>
+    <div class="impopts" id="impOpts"></div>
+    <div class="implist" id="impList"></div>
+    <p id="impWarn" style="margin:10px 0 0;font-size:12.5px;color:#A0620A"></p>
+    <div class="row" style="margin-top:14px"><button class="btn" id="impCancel">取消</button><button class="btn primary" id="impGo">開始匯入</button></div>
   </div>
 </div>
 
@@ -578,7 +678,18 @@ button{cursor:pointer;border:0;background:none}
 
 <script>
 /* ============================================================
-   活動專卷 V90
+   活動專卷 V92
+   V92：鎖定的第 1 章，每一列右邊多一個「到 Gurus 編輯 ↗」連結，直接開 Gurus 出席一覽表
+   V91：1. 整個資料夾匯入：子資料夾＝章節、再下一層＝章節裡的資料夾；只收 PDF、PNG、JPG；
+           匯入前先預覽（新增／換新版／已經有了），可以拖曳排序、用下拉選單改放進哪一章；
+           拖曳讀不到時改用「點一下選資料夾」，讀不到的檔案會列出來，不會整批失敗
+        2. 第 1 章（Gurus、處內主管出席）鎖定：不能改名、刪除、移動，裡面的檔案也不能動，匯入不碰；
+           要改的話先打開「🔒 Gurus 出席一覽表」輸入密碼；清空整份專卷時也會保留第 1 章
+        3. Gurus／即時網頁嵌入區塊收起來，輸入密碼才打開
+        4. 章節裡的檔案改成按住 ⠿ 拖曳排序，拿掉上下箭頭
+        5. 上傳框左邊加閃爍箭頭標示「整個資料夾」「單一檔案」
+        6. 展覽數據縮小（前台卡片、後台兩欄並排）；可以自己新增數據項目
+        7. 刷進人數：打第一天日期，後面自動往後排，並加上星期，例：10/1(四)
    V90：點上方活動提醒或左側標籤，會一路盯住目標直到上面的檔案都載完，不再只跳到一半；你自己一捲就放手
    V89：1. 前台抓不到檔案時先自動重讀目錄；重讀後清單還是指向那份檔案＝雲端真的缺檔，改寫清楚原因（F5 也不會好，要後台重傳），不再一直顯示「正在載入最新版…」
         2. 後台一進來就檢查每一份檔案在雲端還在不在，缺檔的那一列標紅＋最上面列出清單，按「⇄ 換附件」補傳即可
@@ -1242,11 +1353,22 @@ function ensureStats(){
       doc.stats[it.key]={cur:"",last:""};
     doc.stats[it.key].unit=it.unit;   // 單位固定，不開放後台編輯
   });
+  if(!Array.isArray(doc.stats.custom)) doc.stats.custom=[];   // V91：自訂數據
   const v=doc.stats.visitors;
   if(!v||typeof v!=="object") doc.stats.visitors={days:[],last:""};
   if(!Array.isArray(doc.stats.visitors.days)) doc.stats.visitors.days=[];
   if(!Array.isArray(doc.stats.visitors.lastDays)) doc.stats.visitors.lastDays=[];
 }
+/* V91：刷進人數的日期。今年用今年年份、去年用去年年份算星期 */
+const visYear=k=>new Date().getFullYear()-(k==="lastDays"?1:0);
+function visParse(t,y){
+  t=String(t||"").replace(/[（(][^）)]*[）)]/g,"").trim();
+  let m=t.match(/^(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/)||t.match(/^(\d{2})(\d{2})$/);
+  if(!m) return null;
+  const mo=+m[1], da=+m[2], d=new Date(y,mo-1,da);
+  return (d.getMonth()===mo-1&&d.getDate()===da)?d:null;
+}
+const visFmt=d=>(d.getMonth()+1)+"/"+d.getDate()+"("+"日一二三四五六"[d.getDay()]+")";
 /* 刷進人數：每天一格，合計自動加總 */
 function visitTotal(v,key){
   let sum=0,any=false;
@@ -1285,16 +1407,17 @@ function statDelta(cur,last){
 }
 function statsFrontHTML(){
   if(!doc.stats) return "";
-  const cards=STAT_ITEMS.map(it=>{
-    const s=doc.stats[it.key]||{cur:"",last:"",unit:""};
+  const card=(s,label)=>{
     if(!edOn(s,EDITION)) return "";               // 這一項沒開給目前版本看
-    if(s.cur===""||Number(s.cur)===0) return "";  // 沒填或填 0 就不顯示
+    if(s.cur===""||s.cur==null||Number(s.cur)===0) return "";  // 沒填或填 0 就不顯示
     return '<div class="stat-card"><div class="stat-num"><b>'+numFmt(s.cur)+"</b>"+
       (s.unit?'<span class="unit">'+esc(s.unit)+"</span>":"")+statDelta(s.cur,s.last)+"</div>"+
-      '<div class="stat-label">'+esc(it.label)+"</div>"+
-      (s.last!==""?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(s.last)+"</div>":"")+
+      '<div class="stat-label">'+esc(label)+"</div>"+
+      (s.last!==""&&s.last!=null?'<div class="stat-div"></div><div class="stat-last">上屆 '+numFmt(s.last)+"</div>":"")+
       "</div>";
-  }).join("");
+  };
+  const cards=STAT_ITEMS.map(it=>card(doc.stats[it.key]||{cur:"",last:"",unit:""},it.label)).join("")+
+    (doc.stats.custom||[]).map(c=>String(c.label||"").trim()?card(c,c.label.trim()):"").join("");
   let vcard="";
   const v=doc.stats.visitors;
   if(v&&edOn(v,EDITION)){
@@ -2196,7 +2319,7 @@ function hardReload(){
 $("#btnReload").onclick=hardReload;
 
 /* ---------- V88：舊頁面自動換成最新內容 ---------- */
-const APP_VER=90;
+const APP_VER=92;
 let healing=null, lastHeal=0, pendingHeal=false, CODE_OLD=false;
 /* 雲端記錄的「最低程式版本」比這頁新 → 這頁是舊程式，自動重新載入（5 分鐘內只自動一次，避免快取沒更新時一直跳） */
 function versionGate(d){
@@ -2409,12 +2532,24 @@ function renderAdmin(){
           <label class="field"><span>上屆</span>
             <input id="fStat_${it.key}_last" value="${esc(doc.stats[it.key].last)}" inputmode="numeric"></label>
         </div>`).join("")}
-        <div class="statrow" style="align-items:flex-start">
+        ${doc.stats.custom.map((c,i)=>`
+        <div class="statrow custom">
+          <span class="statname cname">
+            <input data-cname="${i}" value="${esc(c.label)}" placeholder="項目名稱（例：媒體出席數）" maxlength="16">
+            <input data-cunit="${i}" value="${esc(c.unit)}" placeholder="單位" maxlength="4" class="cu">
+            <button class="ic-btn" data-cdel="${i}" title="刪掉這一項">✕</button>
+          </span>
+          <span class="edt">${EDITIONS.map(e=>`<button data-cstat="${i}" data-k="${e.k}" class="${edVal(c,e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
+          <label class="field"><span>本屆</span><input data-ccur="${i}" value="${esc(c.cur)}" inputmode="numeric"></label>
+          <label class="field"><span>上屆</span><input data-clast="${i}" value="${esc(c.last)}" inputmode="numeric"></label>
+        </div>`).join("")}
+        <button class="statrow statadd" id="cstatAdd"><b>＋ 新增自訂數據</b><i>例：媒體出席數、論壇人數、現場洽談金額</i></button>
+        <div class="statrow wide" style="align-items:flex-start">
           <span class="statname">刷進人數<i>（單位：人，不重複計算）</i></span>
           <span class="edt">${EDITIONS.map(e=>`<button data-statk="visitors" data-k="${e.k}" class="${edVal(doc.stats.visitors,e.k)?"on":"off"}" title="這一項要不要出現在${esc(e.n)}">${esc(e.n)}</button>`).join("")}</span>
           ${[["days","今年"],["lastDays","去年"]].map(([key,nm])=>`
           <div style="flex:1 1 100%;display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;${key==="lastDays"?"padding-top:10px;border-top:1px dashed var(--rule)":""}">
-            <label class="field" style="flex:0 0 96px;margin:0"><span>${nm}天數</span>
+            <label class="field" style="flex:0 0 96px;margin:0"><span>${nm}（${visYear(key)}）天數</span>
               <input data-vcount="${key}" type="number" min="0" max="14" value="${doc.stats.visitors[key].length}"></label>
             ${doc.stats.visitors[key].map((d,i)=>`
             <div style="display:flex;flex-direction:column;gap:4px;width:104px">
@@ -2432,12 +2567,33 @@ function renderAdmin(){
     </div>
 
     <div class="panel">
+      <h3>整個資料夾匯入</h3>
+      <div class="dirtree">專卷/                ← 拖這一層進來
+├─ 2 開幕典禮/        ← 子資料夾＝章節
+│   ├─ 2-1 程序表.pdf
+│   └─ 2-2 嘉賓名單/  ← 再下一層＝章節裡的資料夾
+└─ 3 展覽簡介/</div>
+      <ul class="dirnote">
+        <li>只收 PDF、PNG、JPG；第 1 章（Gurus）不會動</li>
+        <li>匯入前會先預覽，可以拖曳調整順序</li>
+        <li>已經有的檔案自動略過，內容改過的換成新版</li>
+      </ul>
+      <div class="drop dirdrop" id="dirDrop" style="margin-top:12px">
+        <span class="cue dir">可上傳整個資料夾 <i>➜</i></span>
+        <b>把整個資料夾拖進來，或點一下選資料夾</b>
+        <input type="file" id="dirInput" webkitdirectory directory multiple hidden>
+      </div>
+      <div class="bar" id="dirBar"><i></i></div>
+    </div>
+
+    <div class="panel">
       <h3>上傳檔案</h3>
       <p class="sub">選好章節再拖檔案進來。同一批會依檔名的數字自然排序，2-2 會排在 2-10 前面。</p>
       <label class="field"><span>放進哪一個章節</span>
-        <select id="fSec">${doc.sections.map(s=>'<option value="'+s.id+'">'+esc(s.title)+"</option>").join("")}</select>
+        <select id="fSec">${doc.sections.filter(s=>!secLocked(s)).map(s=>'<option value="'+s.id+'">'+esc(s.title)+"</option>").join("")}</select>
       </label>
       <div class="drop" id="drop">
+        <span class="cue one">上傳單一檔案 <i>➜</i></span>
         <b>把檔案拖進來，或點一下選檔</b>
         <p>PDF 和圖片會直接排進閱讀頁，其他格式放成附件。<br>新上傳的檔案預設兩個版本都會顯示，之後再把不給看的關掉就好。</p>
         <input type="file" id="fInput" multiple hidden>
@@ -2446,6 +2602,8 @@ function renderAdmin(){
       <div class="note"><b>PowerPoint 和 Word 請先另存 PDF 再上傳。</b>
         瀏覽器沒辦法忠實還原 .pptx／.docx 的排版。</div>
       <div class="webadd">
+      ${WEB_UNLOCK?`
+        <div style="text-align:right;margin:-4px 0 8px"><button class="btn" id="webLock" style="font-size:12px;padding:4px 10px">🔒 收起來</button></div>
         <div class="quick">
           <b>快速加入 Gurus 出席一覽表：</b>
           <button class="btn" data-gadd-room="1">＋ Room 1</button>
@@ -2458,6 +2616,8 @@ function renderAdmin(){
           <label class="field" style="flex:0 0 180px"><span>顯示名稱</span><input id="webLabel" maxlength="18" placeholder="例：出席一覽表"></label>
           <button class="btn" id="webAdd" style="flex:0 0 auto">加入</button>
         </div>
+      `:`
+        <div class="weblock" id="webLockBox"><button class="btn" id="webUnlock">🔒 Gurus 出席一覽表／嵌入即時網頁／修改第 1 章（需要密碼）</button></div>`}
       </div>
       ${(()=>{const c=capacity();return `
       <div class="cap ${c.pct>70?"hot":c.pct>40?"warm":""}">
@@ -2507,7 +2667,16 @@ function renderAdmin(){
       save(); renderAdmin();
     });
     const fl=$("#fVisLast"); if(fl) fl.oninput=e=>{v.last=e.target.value;save()};
-    P.querySelectorAll("[data-vdate]").forEach(el=>el.oninput=()=>{v[el.dataset.vk][+el.dataset.vdate].date=el.value.trim();save()});
+    P.querySelectorAll("[data-vdate]").forEach(el=>{
+      el.oninput=()=>{v[el.dataset.vk][+el.dataset.vdate].date=el.value.trim();save()};
+      /* V91：離開欄位時補星期，後面幾天自動往後排 */
+      el.onchange=()=>{
+        const k=el.dataset.vk, i=+el.dataset.vdate, arr=v[k], d0=visParse(el.value,visYear(k));
+        if(!d0){ arr[i].date=el.value.trim(); save(); return; }
+        for(let j=i;j<arr.length;j++){ const d=new Date(d0); d.setDate(d0.getDate()+(j-i)); arr[j].date=visFmt(d); }
+        save(); renderAdmin();
+      };
+    });
     P.querySelectorAll("[data-vn]").forEach(el=>{
       el.oninput=()=>{
         const k=el.dataset.vk, d=v[k][+el.dataset.vn], clean=el.value.replace(/[^\d]/g,"");
@@ -2517,6 +2686,20 @@ function renderAdmin(){
       };
       if(el.dataset.vk==="lastDays") el.onchange=()=>renderAdmin();   // 有沒有分日數字會決定要不要顯示「只填總數」那格
     });
+  }
+  { const C=doc.stats.custom, P=$("#adminPane");
+    P.querySelectorAll("[data-cname]").forEach(el=>el.oninput=()=>{C[+el.dataset.cname].label=el.value;save()});
+    P.querySelectorAll("[data-cunit]").forEach(el=>el.oninput=()=>{C[+el.dataset.cunit].unit=el.value.trim();save()});
+    P.querySelectorAll("[data-ccur]").forEach(el=>el.oninput=()=>{C[+el.dataset.ccur].cur=el.value;save()});
+    P.querySelectorAll("[data-clast]").forEach(el=>el.oninput=()=>{C[+el.dataset.clast].last=el.value;save()});
+    P.querySelectorAll("[data-cstat]").forEach(b=>b.onclick=async()=>{ edToggle(C[+b.dataset.cstat],b.dataset.k); await save(); renderAdmin(); });
+    P.querySelectorAll("[data-cdel]").forEach(b=>b.onclick=async()=>{
+      const c=C[+b.dataset.cdel];
+      if((c.label||c.cur||c.last)&&!confirm("刪掉「"+(c.label||"未命名")+"」這一項？")) return;
+      C.splice(+b.dataset.cdel,1); await save(); renderAdmin(); });
+    $("#cstatAdd").onclick=async()=>{
+      C.push({id:uid(),label:"",unit:"",cur:"",last:""}); await save(); renderAdmin();
+      const el=P.querySelector('[data-cname="'+(C.length-1)+'"]'); if(el) el.focus(); };
   }
   $("#adminPane").querySelectorAll("[data-statk]").forEach(b=>b.onclick=async()=>{
     edToggle(doc.stats[b.dataset.statk],b.dataset.k);
@@ -2538,14 +2721,15 @@ function renderAdmin(){
     so.onclick=async()=>{ ADMIN_AUTH=null; keepAdmin(); try{ if(fb) await fb.auth.signOut(); }catch(e){} REST_MODE=true;
       toast("已登出，回到前台"); setMode(false); }; }
   $("#wipe").onclick=async()=>{
-    if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉。")) return;
+    if(!confirm("要清空整份專卷嗎？所有章節和檔案都會刪掉"+(secLocked(doc.sections[0])?"（鎖定的第 1 章會保留）":"")+"。")) return;
     if(!confirm("再確認一次：這個動作沒辦法復原。")) return;
     if(prompt('確定的話請輸入「清空」兩個字')!=="清空") return toast("已取消");
-    for(const f of allFiles()) if(f.kind!=="web") await Store.delBlob(f);
+    const keep=secLocked(doc.sections[0])?doc.sections[0]:null;   // V91：鎖定的第 1 章保留
+    for(const f of allFiles()) if(f.kind!=="web"&&!(keep&&keep.files.includes(f))) await Store.delBlob(f);
     for(const x of (doc.trash||[])) await Store.delBlob({id:x.id}).catch(()=>{});
-    doc=blankDoc();activeSec=null;pdfCache.clear();
+    doc=blankDoc(); if(keep){ doc.sections=[keep]; ensureStats(); } activeSec=null;pdfCache.clear();
     await save();renderAdmin();renderView();toast("已清空")};
-  bindDrop(); bindWebAdd(); renderSecList();
+  bindDrop(); bindDirImport(); bindWebAdd(); renderSecList();
 }
 
 const edVal=(o,k)=>edOn(o,k);
@@ -2590,7 +2774,16 @@ function renderSecList(){
   const box=$("#secList");
   if(!doc.sections.length){box.innerHTML='<div class="lnone" style="border:0">還沒有章節，先按下面的「新增章節」。</div>';return}
   doc.sections.forEach(ensureFolders);
-  box.innerHTML=doc.sections.map((s,si)=>`
+  box.innerHTML=doc.sections.map((s,si)=>secLocked(s)?`
+    <div class="sec-block locked">
+      <div class="sec-hd"><div class="sh1">
+        <span class="sw" style="--c:${COLORS[si%COLORS.length]}"></span>
+        <b style="flex:1;font-size:14px">🔒 ${esc(s.title)}</b>
+        <span class="cnt">${s.files.length} 份</span>
+      </div>
+      <span class="secnote off">這一章已鎖定，不能改名、刪除、移動，裡面的檔案也不能動，資料夾匯入也不會碰它。要修改請先打開上面的「🔒 Gurus 出席一覽表」輸入密碼。</span></div>
+      ${s.files.map(f=>`<div class="lnone lockrow"><span>${f.kind==="web"?"🔗":"📄"} ${esc(f.label||f.name)}</span>${f.kind==="web"?`<a class="btn golink" href="${esc(lockLink(f))}" target="_blank" rel="noopener">到 Gurus 編輯 ↗</a>`:""}</div>`).join("")||'<div class="lnone">這一章還沒有檔案</div>'}
+    </div>`:`
     <div class="sec-block">
       <div class="sec-hd">
         <div class="sh1">
@@ -2598,7 +2791,7 @@ function renderSecList(){
           <input value="${esc(s.title)}" data-sname="${s.id}" aria-label="章節名稱">
           <span class="cnt">${EDITIONS.map(e=>esc(e.n)+" "+(edVal(s,e.k)?(s.files||[]).filter(f=>{const g=folderOf(s,f);return edVal(f,e.k)&&(!g||edVal(g,e.k))}).length:0)).join("　")}</span>
           <button class="ic-btn" data-ssort="${s.id}" title="依檔名重新排序">⇅</button>
-          <button class="ic-btn" data-sup="${s.id}" ${si===0?"disabled":""} title="上移">↑</button>
+          <button class="ic-btn" data-sup="${s.id}" ${si===0||(si===1&&secLocked(doc.sections[0]))?"disabled":""} title="上移">↑</button>
           <button class="ic-btn" data-sdn="${s.id}" ${si===doc.sections.length-1?"disabled":""} title="下移">↓</button>
           <button class="ic-btn" data-sdel="${s.id}" title="刪除章節">✕</button>
         </div>
@@ -2621,8 +2814,9 @@ function renderSecList(){
         <button class="addFolder" data-gadd="${s.id}">＋ 新增資料夾</button>
       </div>
       ${s.files.length? s.files.map((f,fi)=>`
-        <div class="fitem ${edClass(f)}${MISSING.has(f.id)?" missing":""}">
+        <div class="fitem ${edClass(f)}${MISSING.has(f.id)?" missing":""}" data-fid="${f.id}" data-sid="${s.id}">
           <div class="fr1">
+            <span class="dh" data-drag="${f.id}" title="按住拖曳，調整這一份的順序">⠿</span>
             <input class="numi" value="${esc(f.num||"")}" data-fnum="${f.id}" maxlength="10"
                    placeholder="${f.kind==="pdf"?"PDF":f.kind==="image"?"圖":f.kind==="web"?"網":"檔"}"
                    aria-label="編號" title="前台左側標籤上顯示的編號。留白就不顯示。">
@@ -2631,8 +2825,6 @@ function renderSecList(){
             <span class="only ${edBadge(f).c}">${esc(edBadge(f).t)}</span>
             <span class="grow"></span>
             <button class="ic-btn sch ${(f.sched||[]).length?(f.schedImp?"imp":"has"):""}" data-fsch="${f.id}" title="設定活動時段（一般提前 2 小時提醒、重要活動一直顯示）">${f.schedImp&&(f.sched||[]).length?"★":"🕒"} ${(f.sched||[]).length?esc(schSummary(f)):"時段"}</button>
-            <button class="ic-btn" data-fup="${f.id}" ${fi===0?"disabled":""} title="上移">↑</button>
-            <button class="ic-btn" data-fdn="${f.id}" ${fi===s.files.length-1?"disabled":""} title="下移">↓</button>
             <button class="ic-btn" data-fdel="${f.id}" title="刪除">✕</button>
           </div>
           <div class="fr2">
@@ -2667,6 +2859,7 @@ function renderSecList(){
     const f=fileById(el.dataset.fjump);
     f.jump=clamp(parseInt(el.value,10)||1,1,f.pages||1);el.value=f.jump;save()});
 
+  bindFileDrag(box);
   box.onclick=async e=>{
     const b=e.target.closest("button");if(!b)return;const d=b.dataset;
     if(d.sed){
@@ -2740,7 +2933,69 @@ function renderSecList(){
   };
 }
 
+let WEB_UNLOCK=false;
+/* V91：第 1 章（Gurus）鎖定。打開 Gurus 區塊（輸入密碼）的期間才能改 */
+/* V92：第 1 章每一列連到 Gurus 編輯頁（帶上那一份的 Room） */
+const GURUS_EDIT="https://taitraaah09-sudo.github.io/search/gurus.html";
+const lockLink=f=>isGurus(f.url)?withParams(GURUS_EDIT,{room:roomOf(f.url)}):webViewUrl(f.url);
+const secLocked=s=>!!s&&s===impReserved()&&!WEB_UNLOCK;   // V91：Gurus／即時網頁嵌入區塊，輸入密碼才打開（這次開著的期間有效）
+const WEB_PW="2870";
+/* V91：按住 ⠿ 拖曳排序（同一章裡上下移動）。只有按住把手時才讓整列可拖，輸入框照常可以選字 */
+let DRAG=null;
+function bindFileDrag(box){
+  const clear=()=>box.querySelectorAll(".drop-top,.drop-bot").forEach(x=>x.classList.remove("drop-top","drop-bot"));
+  box.querySelectorAll("[data-drag]").forEach(h=>{
+    const row=h.closest(".fitem");
+    h.onmousedown=()=>{ row.draggable=true; };
+    h.onmouseup=()=>{ row.draggable=false; };
+  });
+  box.querySelectorAll(".fitem[data-fid]").forEach(row=>{
+    row.addEventListener("dragstart",e=>{
+      if(!row.draggable){ e.preventDefault(); return; }
+      DRAG={fid:row.dataset.fid,sid:row.dataset.sid};
+      e.dataTransfer.effectAllowed="move";
+      try{ e.dataTransfer.setData("text/x-dossier-file",DRAG.fid); }catch(_){}
+      requestAnimationFrame(()=>row.classList.add("dragging"));
+    });
+    row.addEventListener("dragend",()=>{ row.draggable=false; row.classList.remove("dragging"); clear(); DRAG=null; });
+    row.addEventListener("dragover",e=>{
+      if(!DRAG||row.dataset.sid!==DRAG.sid) return;
+      e.preventDefault(); e.dataTransfer.dropEffect="move";
+      const r=row.getBoundingClientRect(), top=e.clientY<r.top+r.height/2;
+      clear(); if(row.dataset.fid!==DRAG.fid) row.classList.add(top?"drop-top":"drop-bot");
+    });
+    row.addEventListener("dragleave",e=>{ if(!row.contains(e.relatedTarget)) row.classList.remove("drop-top","drop-bot"); });
+    row.addEventListener("drop",async e=>{
+      if(!DRAG||row.dataset.sid!==DRAG.sid) return;
+      e.preventDefault(); e.stopPropagation();
+      const top=row.classList.contains("drop-top"); clear();
+      const s=secById(DRAG.sid), from=s.files.findIndex(f=>f.id===DRAG.fid);
+      if(from<0||row.dataset.fid===DRAG.fid) return;
+      const [it]=s.files.splice(from,1);
+      let to=s.files.findIndex(f=>f.id===row.dataset.fid); if(!top) to++;
+      s.files.splice(to,0,it);
+      DRAG=null;
+      await save(); renderAdmin();
+    });
+  });
+}
+
 function bindWebAdd(){
+  const lk=$("#webLock"); if(lk) lk.onclick=()=>{ WEB_UNLOCK=false; renderAdmin(); };
+  const ul=$("#webUnlock");
+  if(ul){
+    ul.onclick=()=>{
+      const box=$("#webLockBox");
+      box.innerHTML='<label class="field" style="flex:0 0 180px;margin:0"><span>密碼</span><input type="password" id="webPw" inputmode="numeric" maxlength="8" autocomplete="off"></label>'+
+        '<button class="btn primary" id="webPwOk" style="align-self:flex-end">打開</button><button class="btn" id="webPwNo" style="align-self:flex-end">取消</button>';
+      const inp=$("#webPw"); inp.focus();
+      const go=()=>{ if(inp.value===WEB_PW){ WEB_UNLOCK=true; renderAdmin(); } else { toast("密碼不對"); inp.value=""; inp.focus(); } };
+      $("#webPwOk").onclick=go;
+      inp.onkeydown=e=>{ if(e.key==="Enter") go(); };
+      $("#webPwNo").onclick=()=>renderAdmin();
+    };
+    return;
+  }
   const b=$("#webAdd"); if(!b) return;
   $("#gurusBase").onchange=async e=>{
     const v=e.target.value.trim();
@@ -2780,7 +3035,293 @@ function bindDrop(){
   input.onchange=()=>{handleFiles([...input.files]);input.value=""};
   ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot")}));
   ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hot")}));
-  drop.addEventListener("drop",e=>handleFiles([...e.dataTransfer.files]));
+  drop.addEventListener("drop",e=>{
+    if(dropHasDir(e.dataTransfer)) return dirFromDrop(e.dataTransfer);   // V91：拖的是資料夾 → 走資料夾匯入
+    handleFiles([...e.dataTransfer.files]);
+  });
+}
+
+/* ---------- V91：整個資料夾匯入 ---------- */
+const IMP_SKIP=/^(\.|~\$)|^(thumbs\.db|desktop\.ini)$|\.(lnk|tmp|url|ini)$/i;
+let IMP=null;
+const IMP_OK=/\.(pdf|png|jpe?g)$/i;
+function dropHasDir(dt){
+  return [...(dt&&dt.items||[])].some(it=>{ const e=it.webkitGetAsEntry&&it.webkitGetAsEntry(); return e&&e.isDirectory; });
+}
+function bindDirImport(){
+  const drop=$("#dirDrop"),input=$("#dirInput"); if(!drop) return;
+  drop.onclick=()=>input.click();
+  input.onchange=()=>{
+    const list=[...input.files].map(f=>({file:f,path:(f.webkitRelativePath||f.name).split("/")}));
+    input.value=""; openImport(list);
+  };
+  ["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("hot")}));
+  ["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("hot")}));
+  drop.addEventListener("drop",e=>dirFromDrop(e.dataTransfer));
+}
+/* 拖放進來的資料夾一層一層讀出來（entry 一定要在 drop 事件當下先抓好，之後就讀不到了） */
+async function dirFromDrop(dt){
+  /* V91：drop 事件當下就要把東西抓好，之後就讀不到了 */
+  const items=[...(dt.items||[])].filter(it=>it.kind==="file");
+  const hP=items.map(it=>{ try{ return it.getAsFileSystemHandle?it.getAsFileSystemHandle().catch(()=>null):Promise.resolve(null); }catch(e){ return Promise.resolve(null); } });
+  const ents=items.map(it=>{ try{ return it.webkitGetAsEntry&&it.webkitGetAsEntry(); }catch(e){ return null; } });
+  const loose=[...(dt.files||[])];
+  if(!ents.some(e=>e&&e.isDirectory)){ if(loose.length) handleFiles(loose); return; }
+  toast("讀取資料夾中…",20000);
+  const handles=await Promise.all(hP);
+
+  /* 新方式：FileSystemHandle（跟選檔上傳走同一套，OneDrive 資料夾通常讀得到） */
+  async function walkH(h,path,out,fails){
+    if(h.kind==="file"){
+      if(IMP_SKIP.test(h.name)) return;
+      try{ const f=await h.getFile(); out.push({file:f,path:path.concat(f.name)}); }
+      catch(e){ fails.push(path.concat(h.name).join("/")); }
+    }else{
+      try{ for await (const k of h.values()) await walkH(k,path.concat(h.name),out,fails); }
+      catch(e){ fails.push(path.concat(h.name).join("/")+"/（整個資料夾）"); }
+    }
+  }
+  /* 舊方式：webkitGetAsEntry，新方式不支援或讀不到時備援 */
+  const getFile=ent=>new Promise((res,rej)=>ent.file(res,rej));
+  async function walkE(ent,path,out,fails){
+    if(ent.isFile){
+      if(IMP_SKIP.test(ent.name)) return;
+      let file=null;
+      try{ file=await getFile(ent); }
+      catch(e1){ await new Promise(r=>setTimeout(r,400)); try{ file=await getFile(ent); }catch(e2){} }
+      if(file) out.push({file,path:path.concat(file.name)});
+      else fails.push(path.concat(ent.name).join("/"));
+    }else if(ent.isDirectory){
+      try{
+        const rd=ent.createReader(), kids=[]; let b;
+        do{ b=await new Promise((res,rej)=>rd.readEntries(res,rej)); kids.push(...b); }while(b.length);
+        for(const k of kids) await walkE(k,path.concat(ent.name),out,fails);
+      }catch(e){ fails.push(path.concat(ent.name).join("/")+"/（整個資料夾）"); }
+    }
+  }
+
+  const out=[], fails=[], how=[];
+  for(let i=0;i<items.length;i++){
+    let o=[], f=[];
+    if(handles[i]){ await walkH(handles[i],[],o,f); how.push("新"); }
+    if(ents[i]&&(!handles[i]||f.length)){            // 新方式沒有，或有讀不到的 → 舊方式再讀一次，取讀到比較多的那次
+      const o2=[], f2=[]; await walkE(ents[i],[],o2,f2); how.push("舊");
+      if(!handles[i]||o2.length>o.length){ o=o2; f=f2; }
+    }
+    out.push(...o); fails.push(...f);
+  }
+  dg("資料夾讀取",!fails.length,"讀到 "+out.length+" 份、讀不到 "+fails.length+" 份（方式："+how.join("、")+"）"+(fails.length?"："+fails.slice(0,3).join("、"):""));
+  if(!out.length){
+    return toast(fails.length?"拖進來的資料夾讀不到（"+fails[0]+"）。請改成「點一下這個框」，用跳出來的視窗選資料夾":"資料夾是空的",9000);
+  }
+  toast("讀好了，共 "+out.length+" 份檔案"+(fails.length?"，"+fails.length+" 份讀不到":""),2000);
+  openImport(out,fails);
+}
+/* V91：第 1 章固定放 Gurus 出席一覽表（外部連結），資料夾匯入一律不動它 */
+/* 只有在第 1 章真的是 Gurus 那章（名稱有 Gurus 或裡面放了即時網頁）才保留，空白專卷第一次匯入不會把第一個新章節誤當成保留章 */
+const impReserved=()=>{ const s0=doc.sections[0]; return s0&&(/gurus/i.test(s0.title)||(s0.files||[]).some(f=>f.kind==="web"))?s0:null; };
+const impNorm=t=>String(t||"").normalize("NFKC").replace(/\s+/g,"").toLowerCase();
+function impMatchSec(title){
+  const n=impNorm(title), pool=doc.sections.filter(x=>x!==impReserved());   // 第 1 章不參與比對
+  let s=pool.find(x=>impNorm(x.title)===n); if(s) return s;
+  const bare=impNorm(stripNum(title)); if(!bare) return null;
+  const hits=pool.filter(x=>impNorm(stripNum(x.title))===bare);
+  return hits.length===1?hits[0]:null;
+}
+function openImport(raw,unread){
+  raw=raw.filter(x=>x.file&&x.file.size>0&&!x.path.some(p=>IMP_SKIP.test(p)));
+  /* V91：只吃 PDF、PNG、JPG */
+  const ignored=raw.filter(x=>!IMP_OK.test(x.file.name));
+  raw=raw.filter(x=>IMP_OK.test(x.file.name));
+  if(!raw.length) return toast("資料夾裡沒有 PDF、PNG、JPG 可以匯入"+(ignored.length?"（略過 "+ignored.length+" 份其他格式）":""),5000);
+  const roots=new Set(raw.map(x=>x.path[0]));
+  const single=roots.size===1&&raw.every(x=>x.path.length>=2);
+  const rootName=single?[...roots][0]:"";
+  /* 只拖一個資料夾：它本身跟現有章節同名，或裡面只有檔案沒有子資料夾 → 它就是一個章節；否則當成「整個展」的外層 */
+  const strip=single&&!impMatchSec(rootName)&&raw.some(x=>x.path.length>=3);
+  const eds={}; EDK.forEach(k=>eds[k]=(k===EDK[0]));     // 新匯入的預設只給處內版，Gurus 版再自己勾
+  IMP={raw,ignored,unread:unread||[],single,rootName,strip,eds,update:true,plan:null,order:{},target:{}};
+  renderImport();
+  $("#impMask").classList.add("on");
+}
+const impKey=it=>it.group+"/"+it.file.name;
+const impSort=it=>it.group?it.group+"/"+it.file.name:it.file.name;   // V91：資料夾跟檔案一起照編號排
+function impBuild(){
+  const R=impReserved(), isR=t=>R&&(impNorm(t)===impNorm(R.title)||(impNorm(stripNum(t))&&impNorm(stripNum(t))===impNorm(stripNum(R.title))));
+  let fallback=secById(($("#fSec")||{}).value)||null;
+  if(fallback===R) fallback=null;                                    // 散檔也不放進第 1 章
+  if(!fallback) fallback=doc.sections.find(x=>x!==R)||null;
+  const chs=new Map(), outside=[];
+  IMP.raw.forEach(x=>{
+    const parts=IMP.strip?x.path.slice(1):x.path;
+    if(parts.length<2){ outside.push(x.file); return; }
+    const title=parts[0].trim(), group=parts.length>2?parts[1].trim():"";
+    if(!chs.has(title)) chs.set(title,isR(title)?{key:title,title,sec:null,items:[],reserved:true}:{key:title,title,sec:impMatchSec(title),items:[]});
+    chs.get(title).items.push({file:x.file,group});
+  });
+  if(outside.length) chs.set("__loose__",{key:"__loose__",title:IMP.rootName||"散檔",sec:fallback,items:outside.map(f=>({file:f,group:""})),loose:true});
+  /* V91：預覽裡用下拉選單改過要放哪一章 */
+  chs.forEach(ch=>{ if(ch.reserved) return;
+    const t=IMP.target[ch.key];
+    if(t==="__new__") ch.sec=null;
+    else if(t){ const x=secById(t); if(x&&x!==R) ch.sec=x; } });
+  const idx=c=>c.reserved?-1:c.sec?doc.sections.indexOf(c.sec):1e6;   // 既有章節照後台順序排前面，新章節依名稱排在後面
+  const list=[...chs.values()].sort((a,b)=>idx(a)-idx(b)||natCmp(a.title,b.title));
+  list.forEach(ch=>{
+    if(ch.reserved){ ch.items.forEach(it=>{ it.old=null; it.act="skip"; }); return; }
+    const old=ch.sec?(ch.sec.files||[]).filter(f=>f.kind!=="web"):[];
+    ch.items.sort((a,b)=>natCmp(impSort(a),impSort(b)));
+    const ord=IMP.order[ch.key];   // V91：使用者在預覽裡拖過，就照拖的順序
+    if(ord) ch.items.sort((a,b)=>ord.indexOf(impKey(a))-ord.indexOf(impKey(b)));
+    ch.items.forEach(it=>{
+      const hit=old.find(f=>f.name===it.file.name);
+      it.old=hit||null;
+      it.act=!hit?"new":(+hit.size===it.file.size?"skip":"upd");
+    });
+  });
+  return list;
+}
+function renderImport(){
+  const plan=IMP.plan=impBuild();
+  let nNew=0,nUpd=0,nSkip=0,nCh=0;
+  let nRes=0;
+  plan.forEach(ch=>{ if(!ch.sec&&!ch.reserved) nCh++;
+    if(ch.reserved){ nRes+=ch.items.length; return; }
+    ch.items.forEach(it=>{ if(it.act==="new") nNew++; else if(it.act==="upd") nUpd++; else nSkip++; }); });
+  const doUpd=IMP.update?nUpd:0, total=nNew+doUpd;
+  $("#impSum").innerHTML=(IMP.single?"資料夾「"+esc(IMP.rootName)+"」，":"")+"共 "+(nNew+nUpd+nSkip+nRes)+" 份檔案："+
+    "<b style='color:#2E7D4F'>新增 "+nNew+"</b>"+(nUpd?"、<b style='color:#A0620A'>內容換過 "+nUpd+"</b>":"")+(nSkip?"、已經有了 "+nSkip:"")+
+    (nCh?"；會新建 <b>"+nCh+"</b> 個章節":"")+(nRes?"；第 1 章的 "+nRes+" 份略過":"")+"。";
+  $("#impOpts").innerHTML=
+    (IMP.single?`<label style="flex:1 1 100%"><input type="checkbox" id="impStrip" ${IMP.strip?"":"checked"}>「${esc(IMP.rootName)}」本身就是一個章節（不勾＝它是整個展的外層，裡面的子資料夾才是章節）</label>`:"")+
+    `<span style="color:var(--ink-3)">新加入的檔案給：</span>`+
+    EDITIONS.map(e=>`<label><input type="checkbox" data-imped="${e.k}" ${IMP.eds[e.k]?"checked":""}>${esc(e.n)}</label>`).join("")+
+    (nUpd?`<label style="flex:1 1 100%"><input type="checkbox" id="impUpd" ${IMP.update?"checked":""}>同檔名但內容換過的 ${nUpd} 份，換成新版（編號、標題、版本、時段都保留）</label>`:"");
+  const tag={new:"新增",upd:"換新",skip:"略過"};
+  $("#impList").innerHTML=plan.map(ch=>{
+    const c={new:0,upd:0,skip:0}; ch.items.forEach(it=>c[it.act]++);
+    return `<details class="impch" ${plan.length<=3?"open":""}><summary>
+      <b>${ch.loose?"📄 "+esc(ch.title)+" 裡的檔案":"📁 "+esc(ch.title)}</b>
+      ${ch.reserved?'<span class="pill">第 1 章固定放 Gurus，不匯入</span>':
+        `<span class="impto">放進</span><select class="impsel" data-itgt="${esc(ch.key)}" title="改放進哪一章">
+          <option value="__new__" ${ch.sec?"":"selected"}>＋ 新章節「${esc(ch.title)}」</option>
+          ${doc.sections.filter(x=>x!==impReserved()).map(x=>`<option value="${x.id}" ${ch.sec===x?"selected":""}>${esc(x.title)}</option>`).join("")}
+        </select>`}
+      ${c.new?'<span class="pill new">新增 '+c.new+'</span>':""}${c.upd?'<span class="pill upd">換新 '+c.upd+'</span>':""}${c.skip?'<span class="pill">略過 '+c.skip+'</span>':""}
+    </summary>${ch.items.map(it=>{
+      const a=(it.act==="upd"&&!IMP.update)?"skip":it.act;
+      return `<div class="impf" data-ich="${esc(ch.key)}" data-ikey="${esc(impKey(it))}">${ch.reserved?"":'<span class="dh" data-idrag>⠿</span>'}<i class="${a}">${tag[a]}</i><span>${it.group?"<em>"+esc(it.group)+" / </em>":""}${esc(it.file.name)} <em>· ${kb(it.file.size)}</em></span></div>`;
+    }).join("")}</details>`;
+  }).join("");
+  const ign=IMP.ignored||[];
+  const noEd=!EDK.some(k=>IMP.eds[k]);
+  const ur=IMP.unread||[];
+  $("#impWarn").innerHTML=[
+    ur.length?"<b style='color:#9B3A2F'>有 "+ur.length+" 份讀不到，這次不會匯入</b>："+ur.slice(0,4).map(esc).join("、")+(ur.length>4?" 等":"")+
+      "。可以改成「點一下框框」用視窗選同一個資料夾再匯入一次；如果是 OneDrive 的☁️檔案，先在資料夾按右鍵 →「一律保留在此裝置上」。已經匯入的會自動略過。":"",
+    ign.length?"只匯入 PDF、PNG、JPG，略過 "+ign.length+" 份其他格式："+ign.slice(0,4).map(x=>esc(x.file.name)).join("、")+(ign.length>4?" 等":"")+"。要放進專卷請先另存 PDF。":"",
+    noEd?"兩個版本都沒勾，新檔案前台看不到（之後還是可以在下面一份一份打開）。":""
+  ].filter(Boolean).join("<br>");
+  const moved=Object.keys(IMP.order).length>0;
+  const go=$("#impGo"); go.disabled=!total&&!moved;
+  go.textContent=total?"開始匯入（"+total+" 份）"+(moved?"＋套用順序":""):moved?"套用新順序":"沒有要匯入的檔案";
+  bindImpDrag();
+  $("#impList").querySelectorAll("[data-itgt]").forEach(el=>{
+    el.onclick=e=>e.stopPropagation();
+    el.onchange=()=>{ IMP.target[el.dataset.itgt]=el.value; const open=[...$("#impList").querySelectorAll("details")].map(d=>d.open);
+      renderImport(); $("#impList").querySelectorAll("details").forEach((d,i)=>{ if(open[i]) d.open=true; }); };
+  });
+  const st=$("#impStrip"); if(st) st.onchange=()=>{ IMP.strip=!st.checked; renderImport(); };
+  const up=$("#impUpd"); if(up) up.onchange=()=>{ IMP.update=up.checked; renderImport(); };
+  $("#impOpts").querySelectorAll("[data-imped]").forEach(el=>el.onchange=()=>{ IMP.eds[el.dataset.imped]=el.checked; renderImport(); });
+}
+/* V91：預覽裡按住 ⠿ 拖曳，同一章裡調整順序 */
+function bindImpDrag(){
+  const L=$("#impList"); let src=null;
+  const clear=()=>L.querySelectorAll(".drop-top,.drop-bot").forEach(x=>x.classList.remove("drop-top","drop-bot"));
+  L.querySelectorAll("[data-idrag]").forEach(h=>{ const row=h.closest(".impf");
+    h.onmousedown=()=>{ row.draggable=true; }; h.onmouseup=()=>{ row.draggable=false; }; });
+  L.querySelectorAll(".impf[data-ikey]").forEach(row=>{
+    row.addEventListener("dragstart",e=>{ if(!row.draggable){ e.preventDefault(); return; }
+      src=row; e.dataTransfer.effectAllowed="move"; try{ e.dataTransfer.setData("text/x-imp",row.dataset.ikey); }catch(_){}
+      requestAnimationFrame(()=>row.classList.add("dragging")); });
+    row.addEventListener("dragend",()=>{ row.draggable=false; row.classList.remove("dragging"); clear(); src=null; });
+    row.addEventListener("dragover",e=>{ if(!src||src.dataset.ich!==row.dataset.ich||!row.querySelector("[data-idrag]")) return;
+      e.preventDefault(); const r=row.getBoundingClientRect(), top=e.clientY<r.top+r.height/2;
+      clear(); if(row!==src) row.classList.add(top?"drop-top":"drop-bot"); });
+    row.addEventListener("drop",e=>{ if(!src||src.dataset.ich!==row.dataset.ich) return;
+      e.preventDefault(); const top=row.classList.contains("drop-top"); clear(); if(row===src) return;
+      const ch=IMP.plan.find(c=>c.key===row.dataset.ich); if(!ch) return;
+      const keys=ch.items.map(impKey), from=keys.indexOf(src.dataset.ikey);
+      const [k]=keys.splice(from,1); let to=keys.indexOf(row.dataset.ikey); if(!top) to++; keys.splice(to,0,k);
+      IMP.order[ch.key]=keys;
+      const open=[...$("#impList").querySelectorAll("details")].map(d=>d.open);
+      renderImport();
+      $("#impList").querySelectorAll("details").forEach((d,i)=>{ if(open[i]) d.open=true; });   // 拖完維持展開
+    });
+  });
+}
+$("#impCancel").onclick=()=>{ $("#impMask").classList.remove("on"); IMP=null; };
+$("#impGo").onclick=()=>{ const p=IMP; $("#impMask").classList.remove("on"); IMP=null; if(p) runImport(p); };
+async function runImport(p){
+  const jobs=[];
+  p.plan.forEach(ch=>{ if(ch.reserved) return;
+    ch.items.forEach(it=>{ if(it.act==="new"||(it.act==="upd"&&p.update)) jobs.push({ch,it}); }); });
+  const reorder=()=>{   // V91：拖過順序的章節，照預覽順序排；資料夾裡沒有的檔案（手動加的、即時網頁）接在後面
+    let n=0;
+    p.plan.forEach(ch=>{ if(ch.reserved||!ch.sec||!p.order[ch.key]) return;
+      const s=ch.sec, ids=ch.items.map(it=>(it.rec||it.old||{}).id).filter(id=>id&&s.files.some(f=>f.id===id));
+      const head=ids.map(id=>s.files.find(f=>f.id===id)), rest=s.files.filter(f=>!ids.includes(f.id));
+      s.files=head.concat(rest); n++; });
+    return n;
+  };
+  if(!jobs.length){
+    if(reorder()){ if(await save()!==false){ renderAdmin(); toast("已套用新順序"); } }
+    return;
+  }
+  const bar=$("#dirBar")||$("#upBar"), fill=bar.querySelector("i"); bar.classList.add("on"); fill.style.width="0";
+  const errs=[]; let n=0, add=0, upd=0, newCh=0;
+  UPLOADING++;
+  try{
+    for(const {ch,it} of jobs){
+      const file=it.file;
+      try{
+        if(!ch.sec){   // 新章節：第一份檔案要傳的時候才建，整章都傳失敗就不會留一個空章節
+          ch.sec={id:uid(),title:ch.title,files:[],folders:[],eds:{...p.eds}};
+          if(!EDK.some(k=>p.eds[k])) ch.sec.eds=Object.fromEntries(EDK.map(k=>[k,true]));
+          doc.sections.push(ch.sec); newCh++;
+        }
+        const s=ch.sec, kind=kindOf(file), id=uid();
+        let pages=1;
+        if(kind==="pdf"){
+          await needLib("pdfjs");
+          pages=(await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise).numPages;
+        }
+        await Store.putBlob(id,file,pct=>{ fill.style.width=((n+pct)/jobs.length*100)+"%"; });
+        if(it.group){
+          s.folders=Array.isArray(s.folders)?s.folders:[];
+          if(!s.folders.some(g=>g.title===it.group)) s.folders.push({id:uid(),title:it.group});
+        }
+        if(it.act==="upd"&&it.old&&fileById(it.old.id)){
+          const f=it.old, old={...f};
+          Object.assign(f,{id,name:file.name,kind,size:file.size,pages,jump:clamp(f.jump||1,1,pages)});
+          trashBlob(old); upd++; it.rec=f;
+        }else{
+          const pn=parseName(file.name);
+          const rec={id,name:file.name,label:pn.label,num:pn.num,kind,size:file.size,pages,jump:1,eds:{...p.eds}};
+          if(it.group) rec.group=it.group;
+          s.files.push(rec); add++; it.rec=rec;
+        }
+        if(await save()===false) errs.push(file.name+"：檔案已上傳，但清單沒存進雲端，請按「重新存檔」");
+      }catch(err){ errs.push(file.name+"："+err.message); }
+      fill.style.width=(++n/jobs.length*100)+"%";
+    }
+    if(reorder()&&await save()===false) errs.push("順序沒存進雲端，請按「重新存檔」");
+  }finally{ UPLOADING--; }
+  setTimeout(()=>{ bar.classList.remove("on"); fill.style.width="0"; },500);
+  renderAdmin(); checkBlobs(true);
+  const msg="匯入完成：新增 "+add+" 份"+(upd?"、換新 "+upd+" 份":"")+(newCh?"、新建 "+newCh+" 個章節":"");
+  toast(errs.length?msg+"；失敗 "+errs.length+" 份 → "+errs[0]:msg, errs.length?8000:4000);
 }
 
 /* V87：換附件。換成新的檔案編號（裝置上的舊快取自然失效），其他欄位一律不動 */
@@ -2991,7 +3532,7 @@ $("#verBadge").onclick=()=>{
 
 /* ---------- 啟動 ---------- */
 (async function boot(){
-  dg("版本","","V90");
+  dg("版本","","V92");
   /* 重新整理時加的 _r 亂數用完就從網址拿掉，複製網址給別人才乾淨 */
   if(new URLSearchParams(location.search).has("_r")){
     const u=new URL(location.href); u.searchParams.delete("_r"); history.replaceState(null,"",u.href); }
